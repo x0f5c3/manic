@@ -1,0 +1,202 @@
+#compdef git-journal
+
+autoload -U is-at-least
+
+_git-journal() {
+    typeset -A opt_args
+    typeset -a _arguments_options
+    local ret=1
+
+    if is-at-least 5.2; then
+        _arguments_options=(-s -S -C)
+    else
+        _arguments_options=(-s -C)
+    fi
+
+    local context curcontext="$curcontext" state line
+    _arguments "${_arguments_options[@]}" \
+'-p+[Sets a custom working path.]' \
+'--path=[Sets a custom working path.]' \
+'-n+[The number of tags until the parser stops when a single revision is given.]' \
+'--tags-count=[The number of tags until the parser stops when a single revision is given.]' \
+'-e+[A pattern to exclude git tags from the processing.]' \
+'-t+[Use a custom output template.]' \
+'--template=[Use a custom output template.]' \
+'-o+[The output file for the changelog.]' \
+'--output=[The output file for the changelog.]' \
+'-i+[Ignore the given comma separated list of :tags:, like "internal"]' \
+'--ignore=[Ignore the given comma separated list of :tags:, like "internal"]' \
+'-a[Do not stop parsing at the first tag when a single revision is given. Overwrites '\''-n/--tags-count'\''.]' \
+'--all[Do not stop parsing at the first tag when a single revision is given. Overwrites '\''-n/--tags-count'\''.]' \
+'-g[Generate a fresh output template from a commit range.]' \
+'--generate[Generate a fresh output template from a commit range.]' \
+'-s[Print only the shortlog (summary) form.]' \
+'--short[Print only the shortlog (summary) form.]' \
+'-u[Skip entries without any relation to a git TAG.]' \
+'--skip-unreleased[Skip entries without any relation to a git TAG.]' \
+'-h[Prints help information]' \
+'--help[Prints help information]' \
+'-V[Prints version information]' \
+'--version[Prints version information]' \
+'::revision_range -- Specifies the revision range to be processed. If a single revision is specified, the output will stop at the first following git TAG.:_files' \
+":: :_git-journal_commands" \
+"*::: :->git-journal" \
+&& ret=0
+    case $state in
+    (git-journal)
+        words=($line[2] "${words[@]}")
+        (( CURRENT += 1 ))
+        curcontext="${curcontext%:*:*}:git-journal-command-$line[2]:"
+        case $line[2] in
+            (p)
+_arguments "${_arguments_options[@]}" \
+'-h[Prints help information]' \
+'--help[Prints help information]' \
+'-V[Prints version information]' \
+'--version[Prints version information]' \
+':message -- The path to the commit message which should be prepared.:_files' \
+'::type -- The type of the commit. For example "message".:_files' \
+&& ret=0
+;;
+(prepare)
+_arguments "${_arguments_options[@]}" \
+'-h[Prints help information]' \
+'--help[Prints help information]' \
+'-V[Prints version information]' \
+'--version[Prints version information]' \
+':message -- The path to the commit message which should be prepared.:_files' \
+'::type -- The type of the commit. For example "message".:_files' \
+&& ret=0
+;;
+(s)
+_arguments "${_arguments_options[@]}" \
+'-h[Prints help information]' \
+'--help[Prints help information]' \
+'-V[Prints version information]' \
+'--version[Prints version information]' \
+&& ret=0
+;;
+(setup)
+_arguments "${_arguments_options[@]}" \
+'-h[Prints help information]' \
+'--help[Prints help information]' \
+'-V[Prints version information]' \
+'--version[Prints version information]' \
+&& ret=0
+;;
+(v)
+_arguments "${_arguments_options[@]}" \
+'-h[Prints help information]' \
+'--help[Prints help information]' \
+'-V[Prints version information]' \
+'--version[Prints version information]' \
+':message -- The path to the commit message which should be prepared.:_files' \
+&& ret=0
+;;
+(verify)
+_arguments "${_arguments_options[@]}" \
+'-h[Prints help information]' \
+'--help[Prints help information]' \
+'-V[Prints version information]' \
+'--version[Prints version information]' \
+':message -- The path to the commit message which should be prepared.:_files' \
+&& ret=0
+;;
+(help)
+_arguments "${_arguments_options[@]}" \
+'-h[Prints help information]' \
+'--help[Prints help information]' \
+'-V[Prints version information]' \
+'--version[Prints version information]' \
+&& ret=0
+;;
+        esac
+    ;;
+esac
+}
+
+(( $+functions[_git-journal_commands] )) ||
+_git-journal_commands() {
+    local commands; commands=(
+        "prepare:Prepare a commit message before the user can edit it." \
+"p:Prepare a commit message before the user can edit it." \
+"setup:Creates all necessary git hooks and an initial configuration file. Shell completions for bash and fish will be available inside the current working directory." \
+"s:Creates all necessary git hooks and an initial configuration file. Shell completions for bash and fish will be available inside the current working directory." \
+"verify:Verify the specified commit message." \
+"v:Verify the specified commit message." \
+"help:Prints this message or the help of the given subcommand(s)" \
+    )
+    _describe -t commands 'git-journal commands' commands "$@"
+}
+(( $+functions[_git-journal__help_commands] )) ||
+_git-journal__help_commands() {
+    local commands; commands=(
+        
+    )
+    _describe -t commands 'git-journal help commands' commands "$@"
+}
+(( $+functions[_git-journal__p_commands] )) ||
+_git-journal__p_commands() {
+    local commands; commands=(
+        
+    )
+    _describe -t commands 'git-journal p commands' commands "$@"
+}
+(( $+functions[_p_commands] )) ||
+_p_commands() {
+    local commands; commands=(
+        
+    )
+    _describe -t commands 'p commands' commands "$@"
+}
+(( $+functions[_git-journal__prepare_commands] )) ||
+_git-journal__prepare_commands() {
+    local commands; commands=(
+        
+    )
+    _describe -t commands 'git-journal prepare commands' commands "$@"
+}
+(( $+functions[_git-journal__s_commands] )) ||
+_git-journal__s_commands() {
+    local commands; commands=(
+        
+    )
+    _describe -t commands 'git-journal s commands' commands "$@"
+}
+(( $+functions[_s_commands] )) ||
+_s_commands() {
+    local commands; commands=(
+        
+    )
+    _describe -t commands 's commands' commands "$@"
+}
+(( $+functions[_git-journal__setup_commands] )) ||
+_git-journal__setup_commands() {
+    local commands; commands=(
+        
+    )
+    _describe -t commands 'git-journal setup commands' commands "$@"
+}
+(( $+functions[_git-journal__v_commands] )) ||
+_git-journal__v_commands() {
+    local commands; commands=(
+        
+    )
+    _describe -t commands 'git-journal v commands' commands "$@"
+}
+(( $+functions[_v_commands] )) ||
+_v_commands() {
+    local commands; commands=(
+        
+    )
+    _describe -t commands 'v commands' commands "$@"
+}
+(( $+functions[_git-journal__verify_commands] )) ||
+_git-journal__verify_commands() {
+    local commands; commands=(
+        
+    )
+    _describe -t commands 'git-journal verify commands' commands "$@"
+}
+
+_git-journal "$@"

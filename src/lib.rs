@@ -1,3 +1,6 @@
+pub mod download;
+pub mod chunk;
+
 #[cfg(test)]
 mod tests {
     #[test]

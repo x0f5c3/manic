@@ -5,5 +5,29 @@ authors = ["x0f5c3 <x0f5c3@tutanota.com>"]
 edition = "2018"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+[features]
+default = []
+progress = ["indicatif"]
 
 [dependencies]
+tokio = { version = "^0.2.5", features = ["full"] }
+rayon = { version = "*"}
+thiserror = "*"
+futures = "*"
+log = "*"
+tempfile = "*"
+url = "*"
+bytes = "*"
+sha2 = "*"
+indicatif = { version = "*", optional = true }
+
+
+[dependencies.reqwest]
+version = "0.10.9"
+default-features = false
+reqwest = ["rustls-tls", "stream", "gzip"]
+
+[[bin]]
+name = "test"
+required-features = ["progress"]
+
