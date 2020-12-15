@@ -26,8 +26,8 @@ use tracing::{debug, instrument};
 /// ```no_run
 /// use reqwest::Client;
 /// use indicatif::ProgressBar;
-/// use par_download::progress::downloader;
-/// # use par_download::Error;
+/// use manic::progress::downloader;
+/// # use manic::Error;
 ///
 /// # #[tokio::main]
 /// # async fn main() -> Result<(), Error> {
@@ -85,10 +85,10 @@ pub async fn download(
 /// # Examples
 ///
 /// ```no_run
-/// use par_download::progress::downloader;
+/// use manic::progress::downloader;
 /// use reqwest::Client;
 /// use indicatif::ProgressBar;
-/// # use par_download::Error;
+/// # use manic::Error;
 /// # #[tokio::main]
 /// # async fn main() -> Result<(), Error> {
 /// # let hash = "039058c6f2c0cb492c533b0a4d14ef77cc0f78abccced5287d84a1a2011cfb81";
@@ -131,9 +131,9 @@ pub async fn download_and_verify(
 ///
 /// ```no_run
 /// use reqwest::Client;
-/// use par_download::progress::downloader;
+/// use manic::progress::downloader;
 /// use indicatif::ProgressBar;
-/// # use par_download::Error;
+/// # use manic::Error;
 /// # #[tokio::main]
 /// # async fn main() -> Result<(), Error> {
 /// let client = Client::new();

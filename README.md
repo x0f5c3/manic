@@ -1,8 +1,8 @@
-# par_download
+# Manic
 
-![Tests](https://github.com/x0f5c3/par_download/workflows/Test%20and%20Clippy/badge.svg)
+![Tests](https://github.com/x0f5c3/manic/workflows/Test%20and%20Clippy/badge.svg)
 
-[![codecov](https://codecov.io/gh/x0f5c3/par_download/branch/master/graph/badge.svg)](https://codecov.io/gh/x0f5c3/par_download)
+[![codecov](https://codecov.io/gh/x0f5c3/manic/branch/master/graph/badge.svg)](https://codecov.io/gh/x0f5c3/par_download)
 
 Fast and simple async downloads
 

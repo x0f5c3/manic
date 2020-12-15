@@ -18,8 +18,8 @@ use crate::Error;
 /// # Examples
 ///
 /// ```no_run
-/// use par_download::downloader;
-/// use par_download::Error;
+/// use manic::downloader;
+/// use manic::Error;
 /// use reqwest::Client;
 ///
 /// # #[tokio::main]
@@ -56,8 +56,8 @@ pub async fn get_length(url: &str, client: Option<&Client>) -> Result<u64, Error
 ///
 /// # Examples
 /// ```
-/// use par_download::downloader;
-/// use par_download::Error;
+/// use manic::downloader;
+/// use manic::Error;
 /// # fn main() -> Result<(), Error> {
 ///     let name = downloader::get_filename("http://test.rs/test.zip")?;
 ///     assert_eq!("test.zip", name);
@@ -88,8 +88,8 @@ pub fn get_filename(url: &str) -> Result<String, Error> {
 /// # Examples
 ///
 /// ```
-/// use par_download::downloader::compare_sha;
-/// use par_download::Error;
+/// use manic::downloader::compare_sha;
+/// use manic::Error;
 /// # fn main() -> Result<(), Error> {
 ///     let data: &[u8] = &[1,2,3];
 ///     let hash = "039058c6f2c0cb492c533b0a4d14ef77cc0f78abccced5287d84a1a2011cfb81";
@@ -121,8 +121,8 @@ pub fn compare_sha(data: &[u8], hash: &str) -> Result<(), Error> {
 ///
 /// ```no_run
 /// use reqwest::Client;
-/// use par_download::downloader;
-/// use par_download::Error;
+/// use manic::downloader;
+/// use manic::Error;
 /// # #[tokio::main]
 /// # async fn main() -> Result<(), Error> {
 /// let client = Client::new();
@@ -168,8 +168,8 @@ pub async fn download(client: &Client, url: &str, workers: u8) -> Result<Vec<u8>
 ///
 /// ```no_run
 /// use reqwest::Client;
-/// use par_download::downloader;
-/// use par_download::Error;
+/// use manic::downloader;
+/// use manic::Error;
 /// # #[tokio::main]
 /// # async fn main() -> Result<(), Error> {
 /// # let hash = "039058c6f2c0cb492c533b0a4d14ef77cc0f78abccced5287d84a1a2011cfb81";
@@ -205,8 +205,8 @@ pub async fn download_and_verify(
 /// # Examples
 ///
 /// ```no_run
-/// use par_download::downloader;
-/// use par_download::Error;
+/// use manic::downloader;
+/// use manic::Error;
 /// use reqwest::Client;
 /// #[tokio::main]
 /// async fn main() -> Result<(), Error> {
