@@ -1,5 +1,8 @@
 # par_download
 
+![Workflow Status](https://github.com/x0f5c3/par_download/workflow/Test-and-Clippy/badge.svg)
+[![codecov](https://codecov.io/gh/x0f5c3/par_download/branch/master/graph/badge.svg)](https://codecov.io/gh/x0f5c3/par_download)
+
 Fast and simple async downloads
 
 Provides easy to use functions to download a file using multiple async connections
