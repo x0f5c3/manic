@@ -1,0 +1,12 @@
+[[tags]]
+footers = []
+name = "default"
+tag = "default"
+
+[footer]
+once = false
+text = ""
+
+[header]
+once = false
+text = ""
