@@ -1,6 +1,6 @@
 # par_download
 
-![Workflow Status](https://github.com/x0f5c3/par_download/workflow/Test-and-Clippy/badge.svg)
+![Workflow Status](https://github.com/x0f5c3/par_download/workflow/Test_and_Clippy/badge.svg)
 [![codecov](https://codecov.io/gh/x0f5c3/par_download/branch/master/graph/badge.svg)](https://codecov.io/gh/x0f5c3/par_download)
 
 Fast and simple async downloads
