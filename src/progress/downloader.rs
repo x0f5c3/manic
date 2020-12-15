@@ -69,6 +69,11 @@ pub async fn download(
 
     Ok(last)
 }
+
+
+
+
+
 /// Used to download and verify against a SHA256 sum,
 /// returns an error if the connection fails or if the sum doesn't match the one provided
 ///
