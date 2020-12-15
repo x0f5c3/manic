@@ -5,7 +5,6 @@
 
 ![Crates.io](https://img.shields.io/crates/d/manic)
 
-[![codecov](https://codecov.io/gh/x0f5c3/manic/branch/master/graph/badge.svg)](https://codecov.io/gh/x0f5c3/par_download)
 
 Fast and simple async downloads
 
