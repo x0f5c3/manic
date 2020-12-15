@@ -6,7 +6,7 @@ edition = "2018"
 description = "Fast and simple async downloads"
 readme = "README.md"
 repository = "https://github.com/x0f5c3/par_download"
-license = "MIT"
+license = "MIT OR Apache-2.0"
 keywords = ["download", "http", "async"]
 categories = ["asynchronous","web-programming::http-client", "network-programming"]
 
@@ -24,7 +24,6 @@ sha2 = "*"
 indicatif = { version = "*", optional = true }
 tracing = { version = "*", features = ["log"] }
 tracing-futures = "*"
-smallvec = "*"
 
 
 [dependencies.reqwest]
