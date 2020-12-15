@@ -77,7 +77,7 @@ pub fn get_filename(url: &str) -> Result<String, Error> {
                 Some(name.to_string())
             }
         })
-        .ok_or(Error::NoFilename(url.to_string()))
+        .ok_or_else(|| Error::NoFilename(url.to_string()))
 }
 /// Compare SHA256 of the data to the given sum,
 /// will return an error if the sum is not equal to the data's
@@ -139,8 +139,7 @@ pub async fn download(client: &Client, url: &str, workers: u8) -> Result<Vec<u8>
     let hndl_vec = chunk_iter
         .into_iter()
         .map(move |x| {
-            let hndl = chunk::download(x, url, client);
-            hndl
+            chunk::download(x, url, client)
         })
         .collect::<Vec<_>>();
     let result: Vec<u8> = {
