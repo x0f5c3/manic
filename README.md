@@ -1,6 +1,9 @@
 # Manic
 
-![Tests](https://github.com/x0f5c3/manic/workflows/Test%20and%20Clippy/badge.svg)
+![Crates.io](https://img.shields.io/crates/l/manic)
+![Crates.io](https://img.shields.io/crates/v/manic)
+
+![Crates.io](https://img.shields.io/crates/d/manic)
 
 [![codecov](https://codecov.io/gh/x0f5c3/manic/branch/master/graph/badge.svg)](https://codecov.io/gh/x0f5c3/par_download)
 
