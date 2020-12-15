@@ -6,7 +6,7 @@ use crate::Error;
 
 
 #[derive(Debug)]
-pub(crate) struct ChunkIter {
+pub struct ChunkIter {
     low: u64,
     hi: u64,
     chunk_size: u32,
@@ -45,7 +45,7 @@ impl Iterator for ChunkIter {
 
 
     #[instrument(skip(client, pb))]
-    pub(crate) async fn download(val: String, url: &str, client: &Client, pb: ProgressBar) -> Result<Vec<u8>, Error> {
+    pub async fn download(val: String, url: &str, client: &Client, pb: ProgressBar) -> Result<Vec<u8>, Error> {
         let mut res = Vec::new();
         let mut resp = client.get(url).header(RANGE, val).send().await?;
         while let Some(chunk) = resp.chunk().await? {

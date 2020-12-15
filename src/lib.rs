@@ -41,7 +41,7 @@ pub mod downloader;
 /// Only available on feature `progress`
 #[cfg(feature = "progress")]
 pub mod progress;
-pub(crate) mod chunk;
+pub mod chunk;
 
 /// Error definition for possible errors in this crate
 #[derive(Debug, Error)]

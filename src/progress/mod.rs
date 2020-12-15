@@ -1,2 +1,2 @@
 pub mod downloader;
-pub(crate) mod chunk;
+pub mod chunk;
