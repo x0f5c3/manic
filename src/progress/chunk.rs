@@ -1,5 +1,6 @@
 use reqwest::Client;
 use reqwest::header::RANGE;
+use indicatif::ProgressBar;
 use tracing::instrument;
 use crate::Error;
 
@@ -42,10 +43,17 @@ impl Iterator for ChunkIter {
 
 
 
-    #[instrument(skip(client))]
-    pub(crate) async fn download(val: String, url: &str, client: &Client) -> Result<Vec<u8>, Error> {
-        let resp = client.get(url).header(RANGE, val).send().await?.bytes().await?;
-        Ok(resp.as_ref().to_vec())
+
+    #[instrument(skip(client, pb))]
+    pub(crate) async fn download(val: String, url: &str, client: &Client, pb: ProgressBar) -> Result<Vec<u8>, Error> {
+        let mut res = Vec::new();
+        let mut resp = client.get(url).header(RANGE, val).send().await?;
+        while let Some(chunk) = resp.chunk().await? {
+            pb.inc(chunk.len() as u64);
+            res.append(&mut chunk.to_vec());
+        }
+        Ok(res)
+        
     }
 
 
