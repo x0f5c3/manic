@@ -3,49 +3,68 @@ use thiserror::Error;
 use reqwest::header::RANGE;
 #[cfg(feature = "progress")]
 use indicatif::ProgressBar;
+use tracing::instrument;
 
 
-
-
-pub struct Chunk<'a> {
-    url: &'a str,
-    range: Range,
+#[derive(Debug)]
+pub(crate) struct ChunkIter {
+    low: u64,
+    hi: u64,
+    chunk_size: u32,
 }
 
-pub enum Range {
-    Last(u64),
-    Normal((u64,u64)),
+impl ChunkIter {
+    pub fn new(low: u64, hi: u64, chunk_size: u32) -> Result<Self, Error> {
+        if chunk_size == 0 {
+            return Err(Error::BadChunkSize)
+        }
+        Ok(ChunkIter {
+            low,
+            hi,
+            chunk_size,
+        })
+    }
 }
 
-
-
-impl<'a> Chunk<'a> {
-    pub fn new(url: &'a str, range: Range) -> Self {
-        Chunk {
-            url,
-            range,
+impl Iterator for ChunkIter {
+    type Item = String;
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.low > self.hi {
+            None
+        } else {
+            let prev_low = self.low;
+            self.low += std::cmp::min(self.chunk_size as u64, self.hi - self.low + 1);
+            Some(format!("bytes={}-{}", prev_low, self.low - 1))
         }
     }
-    pub async fn download(self, client: &Client) -> Result<Vec<u8>, Error> {
-        let val = match self.range {
-            Range::Last(index) => format!("bytes={}-", index),
-            Range::Normal((first, last)) => format!("bytes={}-{}", first, last),
-        };
-        let resp = client.get(self.url).header(RANGE, val).send().await?.bytes().await?;
+}
+
+
+
+
+
+
+    #[cfg(not(feature = "progress"))]
+    #[instrument(skip(client))]
+    pub(crate) async fn download(val: String, url: &str, client: &Client) -> Result<Vec<u8>, Error> {
+        let resp = client.get(url).header(RANGE, val).send().await?.bytes().await?;
         Ok(resp.as_ref().to_vec())
     }
 
     #[cfg(feature = "progress")]
-    pub async fn download_with_progress(self, client: &Client, pb: ProgressBar) -> Result<Vec<u8>, Error> {
-        let val = match self.range {
-            Range::Last(index) => format!("bytes={}-", index),
-            Range::Normal((first, last)) => format!("bytes={}-{}", first, last),
-        };
+    #[instrument(skip(client, pb))]
+    pub(crate) async fn download(val: String, url: &str, client: &Client, pb: Option<ProgressBar>) -> Result<Vec<u8>, Error> {
         let mut res = Vec::new();
-        let mut resp = client.get(self.url).header(RANGE, val).send().await?;
+        let mut resp = client.get(url).header(RANGE, val).send().await?;
+        if let Some(pb1) = pb {
         while let Some(chunk) = resp.chunk().await? {
-            pb.inc(chunk.len() as u64);
+            pb1.inc(chunk.len() as u64);
             res.append(&mut chunk.to_vec());
+        }
+        } else {
+            while let Some(chunk) = resp.chunk().await? {
+                res.append(&mut chunk.to_vec());
+            }
         }
         Ok(res)
         
@@ -53,7 +72,6 @@ impl<'a> Chunk<'a> {
 
 
     
-}
 
 
 
@@ -64,6 +82,10 @@ impl<'a> Chunk<'a> {
 pub enum Error {
     #[error("Network error: {0}")]
     NetError(#[from] reqwest::Error),
+    #[error("Invalid chunk size")]
+    BadChunkSize,
+    #[error("Error sending chunk")]
+    SendError,
 }
 
 

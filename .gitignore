@@ -1,2 +1,5 @@
 /target
 Cargo.lock
+/_git-journal
+/git-journal.fish
+/git-journal.bash
