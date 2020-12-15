@@ -1,6 +1,6 @@
 # par_download
 
-![Tests](https://github.com/x0f5c3/par_download/workflows/.github/test_and_clippy.yml/badge.svg)
+![Tests](https://github.com/x0f5c3/par_download/.github/workflows/test_and_clippy.yml/badge.svg)
 [![codecov](https://codecov.io/gh/x0f5c3/par_download/branch/master/graph/badge.svg)](https://codecov.io/gh/x0f5c3/par_download)
 
 Fast and simple async downloads
