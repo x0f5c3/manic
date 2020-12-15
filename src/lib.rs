@@ -14,6 +14,22 @@
 //!
 //! ## Crate usage
 //!
+//! # Examples
+//!
+//! ```no_run
+//!
+//! use par_download::downloader;
+//! use reqwest::Client;
+//!
+//! #[tokio::main]
+//! async fn main() -> Result<(), par_download::Error> {
+//!     let client = Client::new();
+//!     let number_of_concurrent_tasks: u8 = 5;
+//!     let result = downloader::download(&client, "https://crates.io", number_of_concurrent_tasks).await?;
+//!     Ok(())
+//! }
+//! ```
+//!
 //!
 
 use std::num::ParseIntError;
