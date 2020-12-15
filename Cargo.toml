@@ -17,11 +17,8 @@ default = []
 progress = ["indicatif"]
 
 [dependencies]
-tokio = { version = "^0.2.5", features = ["full"] }
+tokio = { version = "^0.2.5", features = ["fs", "rt-threaded", "macros"] }
 thiserror = "*"
-futures = "*"
-log = "*"
-tempfile = "*"
 url = "*"
 sha2 = "*"
 indicatif = { version = "*", optional = true }
