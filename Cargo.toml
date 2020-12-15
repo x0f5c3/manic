@@ -18,12 +18,12 @@ progress = ["indicatif"]
 
 [dependencies]
 tokio = { version = "^0.2.5", features = ["fs", "rt-threaded", "macros"] }
-thiserror = "*"
-url = "*"
-sha2 = "*"
-indicatif = { version = "*", optional = true }
-tracing = { version = "*", features = ["log"] }
-tracing-futures = "*"
+thiserror = "1.0.22"
+url = "2.2.0"
+sha2 = "0.9.2"
+indicatif = { version = "0.15.0", optional = true }
+tracing = { version = "0.1.22", features = ["log"] }
+tracing-futures = "0.2.4"
 
 
 [dependencies.reqwest]
