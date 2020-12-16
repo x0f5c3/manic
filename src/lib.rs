@@ -39,7 +39,7 @@ use tokio::prelude::*;
 /// This module is the main part of the crate
 pub mod downloader;
 /// Only available on feature `progress`
-#[cfg(feature = "progress")]
+#[cfg(any(feature = "progress"))]
 pub mod progress;
 pub mod chunk;
 

@@ -1,6 +1,6 @@
 [package]
 name = "manic"
-version = "0.2.1"
+version = "0.2.2"
 authors = ["x0f5c3 <x0f5c3@tutanota.com>"]
 edition = "2018"
 description = "Fast and simple async downloads"
@@ -9,6 +9,11 @@ repository = "https://github.com/x0f5c3/manic"
 license = "MIT OR Apache-2.0"
 keywords = ["download", "http", "async"]
 categories = ["asynchronous","web-programming::http-client", "network-programming"]
+
+[package.metadata.docs.rs]
+all-features = true
+default-target = "x86_64-unknown-linux-gnu"
+targets = ["x86_64-apple-darwin", "x86_64-pc-windows-msvc", "x86_64-pc-windows-gnu", "aarch64-unknown-linux-gnu"]
 
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html

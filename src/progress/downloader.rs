@@ -19,7 +19,7 @@ use tracing::{debug, instrument};
 /// * `client` - reference to a reqwest client
 /// * `url` - &str with the url
 /// * `workers` - amount of concurrent downloads
-/// * `pb` - optional progress bar
+/// * `pb` - progress bar
 ///
 /// # Examples
 ///
