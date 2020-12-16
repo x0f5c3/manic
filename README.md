@@ -1,9 +1,9 @@
 # Manic
 
-![Crates.io](https://img.shields.io/crates/l/manic)
-![Crates.io](https://img.shields.io/crates/v/manic)
+[![Crates.io](https://img.shields.io/crates/l/manic)](https://github.com/x0f5c3/manic)
+[![Crates.io](https://img.shields.io/crates/v/manic)](https://crates.io/crates/manic)
 
-![Crates.io](https://img.shields.io/crates/d/manic)
+[![Crates.io](https://img.shields.io/crates/d/manic)](https://crates.io/crates/manic)
 
 
 Fast and simple async downloads
