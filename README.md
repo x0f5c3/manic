@@ -4,6 +4,7 @@
 [![Crates.io](https://img.shields.io/crates/v/manic)](https://crates.io/crates/manic)
 
 [![Crates.io](https://img.shields.io/crates/d/manic)](https://crates.io/crates/manic)
+[![dependency status](https://deps.rs/crate/manic/0.2.2/status.svg)](https://deps.rs/crate/manic/0.2.2)
 
 
 Fast and simple async downloads
