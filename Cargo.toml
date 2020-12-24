@@ -33,7 +33,7 @@ tracing-futures = "0.2.4"
 
 
 [dependencies.reqwest]
-version = "0.10.9"
+version = "0.10.10"
 default-features = false
 features = ["rustls-tls"]
 
