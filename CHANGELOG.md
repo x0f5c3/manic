@@ -11,9 +11,6 @@
 - [Bumped] version to 0.2.3
 - [Removed] messages above progress bar
 - [Added] changes to changelog
-- [Added] docs.rs metadata
-- [Added] links to badges
-- [Fixed] gitjournal
 
 
 # v0.2.2 (2020-12-16):
@@ -26,19 +23,14 @@
 - [Fixed] readme badge
 - [Improved] git journal
 - [Added] ChunkIter to public
-- [Added] ..
-    Improved feature flags
-    Fixed downloading
-    Added conditional compilation
-- [Added] documentation for download module
+
 
 # v0.2.0 (2020-12-15):
 - [Fixed] unused dependencies
 - [Improved] seperation of features
-- [Added] ..
-    Improved feature flags
-    Fixed downloading
-    Added conditional compilation
+- [Improved] feature flags
+- [Fixed] downloading
+- [Added] conditional compilation
 - [Added] documentation for download module
 
 
@@ -56,10 +48,3 @@
 - [Improved] readme
 - [Removed] smallvec
 - [Added] new commits in changelog
-- [Fixed] unused dependencies
-- [Improved] seperation of features
-- [Added] ..
-    Improved feature flags
-    Fixed downloading
-    Added conditional compilation
-- [Added] documentation for download module
