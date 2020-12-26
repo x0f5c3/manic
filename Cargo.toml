@@ -1,6 +1,6 @@
 [package]
 name = "manic"
-version = "0.2.3"
+version = "0.2.4"
 authors = ["x0f5c3 <x0f5c3@tutanota.com>"]
 edition = "2018"
 description = "Fast and simple async downloads"
