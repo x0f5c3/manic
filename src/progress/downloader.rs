@@ -54,8 +54,8 @@ pub async fn download(
     let mut fut_vec = Vec::new();
     let chunk_iter = ChunkIter::new(0, length - 1, chunk_len as u32)?;
     pb.set_length(length);
-    pb.println(format!("File size: {}MB", mb));
-    pb.println(format!("Chunk length: {}", chunk_len));
+    debug!("File size: {}MB", mb);
+    debug!("Chunk length: {}", chunk_len);
     for x in chunk_iter.into_iter() {
         fut_vec.push(chunk::download(x, url, client, pb.clone()));
     }

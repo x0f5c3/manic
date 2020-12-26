@@ -1,6 +1,6 @@
 [package]
 name = "manic"
-version = "0.2.2"
+version = "0.2.3"
 authors = ["x0f5c3 <x0f5c3@tutanota.com>"]
 edition = "2018"
 description = "Fast and simple async downloads"
@@ -9,6 +9,7 @@ repository = "https://github.com/x0f5c3/manic"
 license = "MIT OR Apache-2.0"
 keywords = ["download", "http", "async"]
 categories = ["asynchronous","web-programming::http-client", "network-programming"]
+exclude = ["_git-journal", "git-journal*", ".gitjournal.toml", "template.toml"]
 
 [package.metadata.docs.rs]
 all-features = true
@@ -32,7 +33,7 @@ tracing-futures = "0.2.4"
 
 
 [dependencies.reqwest]
-version = "0.10.9"
+version = "0.10.10"
 default-features = false
 features = ["rustls-tls"]
 

@@ -1,18 +1,27 @@
-# v0.2.3 (2020-12-26):
+# v0.2.4 (2020-12-26):
 - [Improved] documentation
 - [Removed] unused error
+
+
+# v0.2.3 (2020-12-24):
+- [Bumped] version to 0.2.3
+- [Removed] messages above progress bar
+- [Added] changes to changelog
+- [Added] docs.rs metadata
+- [Added] links to badges
+- [Fixed] gitjournal
 
 
 # v0.2.2 (2020-12-16):
 - [Added] docs.rs metadata
 - [Added] links to badges
 - [Fixed] gitjournal
+
+# v0.2.1 (2020-12-15):
 - [Bumped] version to 0.2.1
 - [Fixed] readme badge
 - [Improved] git journal
 - [Added] ChunkIter to public
-
-# v0.2.1 (2020-12-15):
 - [Added] ..
     Improved feature flags
     Fixed downloading
