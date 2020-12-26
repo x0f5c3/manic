@@ -1,21 +1,21 @@
 use crate::chunk;
+use crate::Error;
 use reqwest::header::CONTENT_LENGTH;
 use reqwest::Client;
 use sha2::{Digest, Sha256};
 use std::path::Path;
-use tokio::prelude::*;
 use tokio::fs::File;
+use tokio::prelude::*;
 use tracing::{debug, instrument};
-use crate::Error;
 
 /// Get the content-length header using a head request
 ///
 /// # Arguments
 ///
 /// * `url` - &str with the url
-/// * `client` - optional reference to a reqwest client in case custom settings are needed
+/// * `client` - optional reference to a reqwest [`Client`][reqwest::Client] in case custom settings are needed
 ///
-/// # Examples
+/// # Example
 ///
 /// ```no_run
 /// use manic::downloader;
@@ -54,7 +54,7 @@ pub async fn get_length(url: &str, client: Option<&Client>) -> Result<u64, Error
 ///
 /// * `url` - &str with the url
 ///
-/// # Examples
+/// # Example
 /// ```
 /// use manic::downloader;
 /// use manic::Error;
@@ -85,7 +85,7 @@ pub fn get_filename(url: &str) -> Result<String, Error> {
 /// * `data` - u8 slice of data to compare
 /// * `hash` - SHA256 sum to compare to
 ///
-/// # Examples
+/// # Example
 ///
 /// ```
 /// use manic::downloader::compare_sha;
@@ -113,11 +113,11 @@ pub fn compare_sha(data: &[u8], hash: &str) -> Result<(), Error> {
 
 /// Download the file
 /// # Arguments
+/// * `client` - reference to a reqwest [`Client`][reqwest::Client]
 /// * `url` - &str with the url
 /// * `workers` - amount of concurrent downloads
-/// * `client` - reference to a reqwest client
 ///
-/// # Examples
+/// # Example
 ///
 /// ```no_run
 /// use reqwest::Client;
@@ -138,9 +138,7 @@ pub async fn download(client: &Client, url: &str, workers: u8) -> Result<Vec<u8>
     let chunk_iter = chunk::ChunkIter::new(0, length - 1, (length / workers as u64) as u32)?;
     let hndl_vec = chunk_iter
         .into_iter()
-        .map(move |x| {
-            chunk::download(x, url, client)
-        })
+        .map(move |x| chunk::download(x, url, client))
         .collect::<Vec<_>>();
     let result: Vec<u8> = {
         let mut result = Vec::new();
@@ -160,11 +158,12 @@ pub async fn download(client: &Client, url: &str, workers: u8) -> Result<Vec<u8>
 /// returns an error if the connection fails or if the sum doesn't match the one provided
 ///
 /// # Arguments
+/// * `client` - reference to a reqwest [`Client`][reqwest::Client]
 /// * `url` - &str with the url
 /// * `workers` - amount of concurrent downloads
 /// * `hash` - SHA256 sum to compare to
 ///
-/// # Examples
+/// # Example
 ///
 /// ```no_run
 /// use reqwest::Client;
@@ -193,16 +192,17 @@ pub async fn download_and_verify(
     Ok(data)
 }
 
-
 /// Used to download, save to a file and verify against a SHA256 sum,
 /// returns an error if the connection fails or if the sum doesn't match the one provided
 ///
 /// # Arguments
+/// * `client` - reference to a reqwest [`Client`][reqwest::Client]
 /// * `url` - &str with the url
 /// * `workers` - amount of concurrent downloads
 /// * `hash` - SHA256 sum to compare to
+/// * `path` - where to download the file
 ///
-/// # Examples
+/// # Example
 ///
 /// ```no_run
 /// use manic::downloader;
@@ -237,5 +237,3 @@ pub async fn download_verify_and_save(
     compare_sha(data.as_slice(), hash)?;
     Ok(())
 }
-
-

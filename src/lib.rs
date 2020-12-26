@@ -6,15 +6,16 @@
 //! This crate is a work in progress
 //!
 //!
+//! The crate exposes debug logs through crate [`tracing`][tracing]
 //!
 //! ## Feature flags
 //!
-//! - `progress`: Enables progress reporting using indicatif
+//! - `progress`: Enables progress reporting using [`indicatif`][indicatif]
 //!
 //!
 //! ## Crate usage
 //!
-//! # Examples
+//! # Example
 //!
 //! ```no_run
 //!
@@ -34,14 +35,14 @@
 
 use std::num::ParseIntError;
 use thiserror::Error;
-use tokio::prelude::*;
+use tokio::io;
 
+pub mod chunk;
 /// This module is the main part of the crate
 pub mod downloader;
 /// Only available on feature `progress`
 #[cfg(any(feature = "progress"))]
 pub mod progress;
-pub mod chunk;
 
 /// Error definition for possible errors in this crate
 #[derive(Debug, Error)]
@@ -67,8 +68,7 @@ pub enum Error {
     /// Returned when the SHA256 sum didn't match
     #[error("Checksum doesn't match")]
     SHA256MisMatch(String),
+    /// Returned when the selected chunk size == 0
     #[error("Invalid chunk size")]
     BadChunkSize,
-    #[error("Error sending chunk")]
-    SendError,
 }

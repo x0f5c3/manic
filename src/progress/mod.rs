@@ -1,2 +1,2 @@
-pub mod downloader;
 pub mod chunk;
+pub mod downloader;

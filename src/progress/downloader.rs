@@ -1,11 +1,12 @@
-use crate::downloader;
+use crate::chunk::ChunkIter;
+use crate::downloader::{compare_sha, get_filename, get_length};
 use crate::progress::chunk;
 use crate::Error;
 use indicatif::ProgressBar;
 use reqwest::Client;
 use std::path::Path;
-use tokio::prelude::*;
 use tokio::fs::File;
+use tokio::prelude::*;
 use tracing::{debug, instrument};
 
 /// Download the file with a progress bar using indicatif.
@@ -13,15 +14,15 @@ use tracing::{debug, instrument};
 /// The function will set the length of the progress bar
 /// to the content-length, the bar passed to the function can be initialized with any size
 ///
-/// Only on feature "indicatif"
+/// Only on feature `indicatif`
 ///
 /// # Arguments
-/// * `client` - reference to a reqwest client
+/// * `client` - reference to a reqwest [`Client`][reqwest::Client]
 /// * `url` - &str with the url
 /// * `workers` - amount of concurrent downloads
-/// * `pb` - progress bar
+/// * `pb` - [`ProgressBar`][indicatif::ProgressBar]
 ///
-/// # Examples
+/// # Example
 ///
 /// ```no_run
 /// use reqwest::Client;
@@ -47,11 +48,11 @@ pub async fn download(
     workers: u8,
     pb: ProgressBar,
 ) -> Result<Vec<u8>, Error> {
-    let length = downloader::get_length(url, Some(&client)).await?;
+    let length = get_length(url, Some(&client)).await?;
     let mb = length / 1000000;
     let chunk_len = length / workers as u64;
     let mut fut_vec = Vec::new();
-    let chunk_iter = chunk::ChunkIter::new(0, length - 1, chunk_len as u32)?;
+    let chunk_iter = ChunkIter::new(0, length - 1, chunk_len as u32)?;
     pb.set_length(length);
     pb.println(format!("File size: {}MB", mb));
     pb.println(format!("Chunk length: {}", chunk_len));
@@ -70,10 +71,6 @@ pub async fn download(
     Ok(last)
 }
 
-
-
-
-
 /// Used to download and verify against a SHA256 sum,
 /// returns an error if the connection fails or if the sum doesn't match the one provided
 ///
@@ -81,13 +78,13 @@ pub async fn download(
 /// Progress bar length is set by the download function to the content-length of the file
 ///
 /// # Arguments
-/// * `client` - reference to a reqwest client
+/// * `client` - reference to a reqwest [`Client`][reqwest::Client]
 /// * `url` - &str with the url
 /// * `workers` - amount of concurrent downloads
 /// * `hash` - SHA256 sum to compare to
-/// * `pb` - progress bar
+/// * `pb` - [`ProgressBar`][indicatif::ProgressBar]
 ///
-/// # Examples
+/// # Example
 ///
 /// ```no_run
 /// use manic::progress::downloader;
@@ -114,7 +111,7 @@ pub async fn download_and_verify(
 ) -> Result<Vec<u8>, Error> {
     let data: Vec<u8> = download(client, url, workers, pb).await?;
     debug!("Downloaded");
-    downloader::compare_sha(data.as_slice(), hash)?;
+    compare_sha(data.as_slice(), hash)?;
     debug!("Compared");
     Ok(data)
 }
@@ -126,13 +123,13 @@ pub async fn download_and_verify(
 /// Progress bar length is set by the download function to the content-length of the file
 ///
 /// # Arguments
-/// * `client` - reference to a reqwest client
+/// * `client` - reference to a reqwest [`Client`][reqwest::Client]
 /// * `url` - &str with the url
 /// * `workers` - amount of concurrent downloads
 /// * `hash` - SHA256 sum to compare to
-/// * `pb` - progress bar
+/// * `pb` - [`ProgressBar`][indicatif::ProgressBar]
 ///
-/// # Examples
+/// # Example
 ///
 /// ```no_run
 /// use reqwest::Client;
@@ -160,7 +157,7 @@ pub async fn download_verify_and_save(
     pb: ProgressBar,
 ) -> Result<(), Error> {
     let mut result = {
-        let name = downloader::get_filename(url)?;
+        let name = get_filename(url)?;
         let file_path = Path::new(path).join(name);
         File::create(file_path).await?
     };
@@ -168,6 +165,6 @@ pub async fn download_verify_and_save(
     result.write_all(data.as_slice()).await?;
     result.sync_all().await?;
     result.flush().await?;
-    downloader::compare_sha(data.as_slice(), hash)?;
+    compare_sha(data.as_slice(), hash)?;
     Ok(())
 }
