@@ -37,4 +37,5 @@ version = "0.10.10"
 default-features = false
 features = ["rustls-tls"]
 
-
+[dev-dependencies]
+httpmock = "0.5.2"
