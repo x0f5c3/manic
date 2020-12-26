@@ -41,7 +41,7 @@ use tracing::{debug, instrument};
 /// # }
 /// ```
 ///
-#[instrument(skip(pb))]
+#[instrument(skip(pb, client))]
 pub async fn download(
     client: &Client,
     url: &str,
@@ -101,7 +101,7 @@ pub async fn download(
 /// # }
 /// ```
 ///
-#[instrument(skip(pb))]
+#[instrument(skip(pb, client))]
 pub async fn download_and_verify(
     client: &Client,
     url: &str,
@@ -126,8 +126,9 @@ pub async fn download_and_verify(
 /// * `client` - reference to a reqwest [`Client`][reqwest::Client]
 /// * `url` - &str with the url
 /// * `workers` - amount of concurrent downloads
-/// * `hash` - SHA256 sum to compare to
+/// * `hash` - optional SHA256 sum to compare to
 /// * `pb` - [`ProgressBar`][indicatif::ProgressBar]
+/// * `verify` - set true to verify the file against the hash
 ///
 /// # Example
 ///
@@ -142,29 +143,32 @@ pub async fn download_and_verify(
 /// let pb = ProgressBar::new(100);
 /// let path = "~/Downloads";
 /// # let hash = "039058c6f2c0cb492c533b0a4d14ef77cc0f78abccced5287d84a1a2011cfb81";
-/// let data = downloader::download_verify_and_save(&client, "https://crates.io", 5, hash, path, pb).await?;
+/// let data = downloader::download_and_save(&client, "https://crates.io", 5, Some(hash), path, pb, true).await?;
 /// # Ok(())
 /// # }
 /// ```
 ///
-#[instrument(skip(pb))]
-pub async fn download_verify_and_save(
+#[instrument(skip(pb, client))]
+pub async fn download_and_save(
     client: &Client,
     url: &str,
     workers: u8,
-    hash: &str,
+    hash: Option<&str>,
     path: &str,
     pb: ProgressBar,
+    verify: bool,
 ) -> Result<(), Error> {
     let mut result = {
         let name = get_filename(url)?;
         let file_path = Path::new(path).join(name);
         File::create(file_path).await?
     };
-    let data = download(client, url, workers, pb).await?;
+    let data = match hash {
+        Some(sha) if verify => download_and_verify(client, url, workers, sha, pb).await?,
+        _ => download(client, url, workers, pb).await?,
+    }; 
     result.write_all(data.as_slice()).await?;
     result.sync_all().await?;
     result.flush().await?;
-    compare_sha(data.as_slice(), hash)?;
     Ok(())
 }

@@ -6,11 +6,11 @@
 //! This crate is a work in progress
 //!
 //!
-//! The crate exposes debug logs through crate [`tracing`][tracing]
+//! The crate exposes debug logs through the [`tracing`][tracing] crate
 //!
 //! ## Feature flags
 //!
-//! - `progress`: Enables progress reporting using [`indicatif`][indicatif]
+//! - `progress`: Enables progress reporting using `indicatif`
 //!
 //!
 //! ## Crate usage

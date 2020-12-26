@@ -1,3 +1,7 @@
+# v0.3.0 (2020-12-27)
+- [Improved] documentation
+- [Changed] download and save function to allow downloading without checking against the hash
+
 # v0.2.4 (2020-12-26):
 - [Improved] documentation
 - [Removed] unused error
