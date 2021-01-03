@@ -37,6 +37,23 @@ use std::num::ParseIntError;
 use thiserror::Error;
 use tokio::io;
 
+pub trait Connector: Clone + Send + Sync + 'static + hyper::client::connect::Connect {
+    fn new() -> Self;
+}
+
+#[cfg(feature = "rustls-tls")]
+impl Connector for hyper_rustls::HttpsConnector<hyper::client::HttpConnector> {
+    fn new() -> Self {
+        hyper_rustls::HttpsConnector::with_native_roots()
+    }
+}
+
+#[cfg(feature = "openssl-tls")]
+impl Connector for hyper_tls::HttpsConnector<hyper::client::HttpConnector> {
+    fn new() -> Self {
+        hyper_tls::HttpsConnector::new()
+    }
+}
 pub mod chunk;
 /// This module is the main part of the crate
 pub mod downloader;
@@ -54,21 +71,23 @@ pub enum Error {
     #[error("Tokio IO error: {0}")]
     TokioIOError(#[from] io::Error),
     /// Represents problems with network connectivity
-    #[error("Reqwest error: {0}")]
-    NetError(#[from] reqwest::Error),
+    #[error("hyper error: {0}")]
+    NetError(#[from] hyper::Error),
     /// Returned when the header can't be parsed to a String
     #[error(transparent)]
-    ToStr(#[from] reqwest::header::ToStrError),
+    ToStr(#[from] hyper::header::ToStrError),
     /// Returned when there's no filename in the url
     #[error("No filename in url")]
     NoFilename(String),
     /// Returned when the url couldn't be parsed
     #[error("Failed to parse URL")]
-    UrlParseError(#[from] url::ParseError),
+    UrlParseError(#[from] http::uri::InvalidUri),
     /// Returned when the SHA256 sum didn't match
     #[error("Checksum doesn't match")]
     SHA256MisMatch(String),
     /// Returned when the selected chunk size == 0
     #[error("Invalid chunk size")]
     BadChunkSize,
+    #[error("Request builder error: {0}")]
+    REQError(#[from] http::Error),
 }
