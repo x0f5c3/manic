@@ -1,4 +1,4 @@
 pub mod chunk;
-mod downloader;
+pub mod downloader;
 
 pub use chunk::download_chunk;
