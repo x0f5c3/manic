@@ -37,6 +37,7 @@ hyper-rustls = { version = "0.22.1", optional = true }
 hyper-tls = { version = "*", optional = true }
 http = "*"
 tokio-stream = "0.1.0"
+futures = "*"
 
 
 [dev-dependencies]

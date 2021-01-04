@@ -37,19 +37,25 @@ use std::num::ParseIntError;
 use thiserror::Error;
 use tokio::io;
 
-pub trait Connector: Clone + Send + Sync + 'static + hyper::client::connect::Connect {
+
+#[cfg(feature = "rustls-tls")]
+pub type Rustls = hyper_rustls::HttpsConnector<hyper::client::HttpConnector>;
+#[cfg(feature = "openssl-tls")]
+pub type OpenSSL = hyper_tls::HttpsConnector<hyper::client::HttpConnector>;
+
+pub trait Connector: Clone + Send + Sync + 'static {
     fn new() -> Self;
 }
 
 #[cfg(feature = "rustls-tls")]
-impl Connector for hyper_rustls::HttpsConnector<hyper::client::HttpConnector> {
+impl Connector for Rustls {
     fn new() -> Self {
         hyper_rustls::HttpsConnector::with_native_roots()
     }
 }
 
 #[cfg(feature = "openssl-tls")]
-impl Connector for hyper_tls::HttpsConnector<hyper::client::HttpConnector> {
+impl Connector for OpenSSL {
     fn new() -> Self {
         hyper_tls::HttpsConnector::new()
     }
@@ -60,6 +66,7 @@ pub mod downloader;
 /// Only available on feature `progress`
 #[cfg(any(feature = "progress"))]
 pub mod progress;
+pub(crate) mod utils;
 
 /// Error definition for possible errors in this crate
 #[derive(Debug, Error)]
@@ -91,3 +98,6 @@ pub enum Error {
     #[error("Request builder error: {0}")]
     REQError(#[from] http::Error),
 }
+
+pub type Result<T> = std::result::Result<T, Error>;
+

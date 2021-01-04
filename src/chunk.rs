@@ -3,6 +3,7 @@ use crate::Error;
 use hyper::header::RANGE;
 use hyper::Client;
 use tracing::instrument;
+use hyper::client::connect::Connect;
 
 /// Iterator over remote file chunks that returns a formatted [`RANGE`][hyper::header::RANGE] header value
 #[derive(Debug, Copy, Clone)]
@@ -47,7 +48,7 @@ impl Iterator for Chunks {
 pub async fn download(
     val: String,
     url: &str,
-    client: &Client<impl Connector>,
+    client: &Client<impl Connector + Connect>,
 ) -> Result<Vec<u8>, Error> {
     let req = hyper::Request::get(url)
         .header(RANGE, val)

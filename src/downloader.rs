@@ -1,18 +1,18 @@
 use crate::chunk::{self, Chunks};
 use crate::Connector;
 use crate::Error;
-use hyper::header::CONTENT_LENGTH;
 use hyper::Client;
-use sha2::{Digest, Sha256};
 use std::path::Path;
 use tokio::fs::File;
 use tokio::io::AsyncWriteExt;
 use tracing::{debug, instrument};
+use hyper::client::connect::Connect;
+use crate::utils::*;
 
 #[derive(Debug)]
 pub struct Downloader<C>
 where
-    C: Connector,
+    C: Connector + Connect,
 {
     client: Client<C>,
     hash: Option<String>,
@@ -23,52 +23,31 @@ where
     verify: bool,
 }
 
+
 impl<C> Downloader<C>
 where
-    C: Connector,
+    C: Connector + Connect,
 {
-    pub fn to_verify(mut self, hash: &str) -> Self {
+    pub async fn new(url: &str, workers: u8) -> Result<Self, Error> {
+        let connector = C::new();
+        let client = Client::builder().build::<_, hyper::Body>(connector);
+        let len = get_length(&client, url).await?;
+        let chunks = Chunks::new(0, len - 1, (len / workers as u64) as u32)?;
+        Ok(Self {
+            client,
+            hash: None,
+            chunks,
+            workers,
+            url: url.to_string(),
+            length: len,
+            verify: false,
+        })
+    }
+    pub fn verify(mut self, hash: &str) -> Self {
         self.hash = Some(hash.to_string());
         self.verify = true;
         self
     }
-    /// Get the content-length header using a head request
-    ///
-    /// # Arguments
-    ///
-    /// * `url` - &str with the url
-    /// * `client` - optional reference to a reqwest [`Client`][reqwest::Client] in case custom settings are needed
-    ///
-    /// # Example
-    ///
-    ///```no_run
-    /// use manic::downloader;
-    /// use manic::Error;
-    /// use reqwest::Client;
-    ///
-    /// # #[tokio::main]
-    /// # async fn main() -> Result<(), Error> {
-    ///     let client = Client::new();
-    ///     let length = downloader::get_length("https://docs.rs", Some(&client)).await.unwrap();
-    ///     assert_eq!(25853, length);
-    /// #   Ok(())
-    /// # }
-    /// ```
-    #[instrument(skip(client),fields(URL=%url))]
-    pub async fn get_length(client: &Client<C>, url: &str) -> Result<u64, Error> {
-        let req = hyper::Request::head(url)
-            .body(hyper::Body::empty())
-            .map_err(|e| Error::REQError(e))?;
-        let head_req = client.request(req.into()).await?;
-        let headers = head_req.headers();
-        debug!("Received head response: {:?}", headers);
-        headers[CONTENT_LENGTH]
-            .to_str()?
-            .parse::<u64>()
-            .map_err(Into::into)
-    }
-    /// Get filename from the url, returns an error if the url contains no filename
-    ///
     /// # Arguments
     ///
     /// * `url` - &str with the url
@@ -83,22 +62,6 @@ where
     /// # Ok(())
     /// # }
     /// ```
-    #[instrument(skip(self))]
-    pub fn get_filename(&self) -> Result<String, Error> {
-        let parsed_url = self.url.parse::<hyper::Uri>()?;
-        parsed_url
-            .path()
-            .split('/')
-            .last()
-            .and_then(|name| {
-                if name.is_empty() {
-                    None
-                } else {
-                    Some(name.to_string())
-                }
-            })
-            .ok_or_else(|| Error::NoFilename("No filename".to_string()))
-    }
     /// Download the file
     ///
     /// # Example
@@ -123,17 +86,7 @@ where
             .into_iter()
             .map(move |x| chunk::download(x, &self.url, &self.client))
             .collect::<Vec<_>>();
-        let data = {
-            let mut result = Vec::new();
-            for i in hndl_vec {
-                let mut curr_part = i
-                    .await
-                    .map_err(|_| Error::SHA256MisMatch("Failed".to_string()))?;
-                result.append(&mut curr_part);
-            }
-            result
-        };
-
+        let data = collect_results(hndl_vec).await?;
         Ok(data)
     }
     /// Used to download and verify against a SHA256 sum,
@@ -198,9 +151,9 @@ where
     /// ```
     ///
     #[instrument(skip(self))]
-    pub async fn download_and_save(&self, path: &str) -> Result<(), Error> {
+    pub async fn download_and_save(&self, path: &str) -> Result<(), Error>{
         let mut result = {
-            let name = self.get_filename()?;
+            let name = get_filename(&self.url)?;
             let file_path = Path::new(path).join(name);
             File::create(file_path).await?
         };
@@ -216,34 +169,4 @@ where
     }
 }
 
-/// Compare SHA256 of the data to the given sum,
-/// will return an error if the sum is not equal to the data's
-/// # Arguments
-/// * `data` - u8 slice of data to compare
-/// * `hash` - SHA256 sum to compare to
-///
-/// # Example
-///
-/// ```
-/// use manic::downloader::compare_sha;
-/// use manic::Error;
-/// # fn main() -> Result<(), Error> {
-///     let data: &[u8] = &[1,2,3];
-///     let hash = "039058c6f2c0cb492c533b0a4d14ef77cc0f78abccced5287d84a1a2011cfb81";
-///     compare_sha(data,hash).unwrap();
-/// # Ok(())
-/// # }
-/// ```
-#[instrument(skip(data), fields(SHA=%hash))]
-pub fn compare_sha(hash: &str, data: &[u8]) -> Result<(), Error> {
-    debug!("Comparing sum {}", hash);
-    let finally = Sha256::digest(data);
-    let hexed = format!("{:x}", finally);
-    debug!("SHA256 sum: {}", hexed);
-    if hexed == hash {
-        debug!("SHA256 MATCH!");
-        Ok(())
-    } else {
-        Err(Error::SHA256MisMatch(hexed))
-    }
-}
+
