@@ -11,6 +11,7 @@ use hyper::client::connect::Connect;
 use hyper::header::RANGE;
 use tokio_stream::StreamExt;
 use crate::utils::*;
+use crate::Hash;
 
 #[derive(Debug)]
 pub struct Downloader<C>
@@ -18,7 +19,7 @@ where
     C: Connector + Connect,
 {
     client: Client<C>,
-    hash: Option<String>,
+    hash: Option<Hash>,
     chunks: Chunks,
     workers: u8,
     url: String,
@@ -48,8 +49,8 @@ where
             bar: pb,
         })
     }
-    pub fn to_verify(mut self, hash: &str) -> Self {
-        self.hash = Some(hash.to_string());
+    pub fn verify(mut self, hash: Hash) -> Self {
+        self.hash = Some(hash);
         self.verify = true;
         self
     }

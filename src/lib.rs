@@ -1,3 +1,4 @@
+#![deny(missing_debug_implementations)]
 //! Fast and simple async downloads
 //!
 //! Provides easy to use functions to download a file using multiple async connections
@@ -11,6 +12,8 @@
 //! ## Feature flags
 //!
 //! - `progress`: Enables progress reporting using `indicatif`
+//! - `rustls-tls`: Enables https through Rustls, enabled by default
+//! - `openssl-tls`: Enables https through openssl
 //!
 //!
 //! ## Crate usage
@@ -19,14 +22,14 @@
 //!
 //! ```no_run
 //!
-//! use manic::downloader;
-//! use reqwest::Client;
+//! use manic::downloader::Downloader;
+//! use manic::Rustls;
 //!
 //! #[tokio::main]
 //! async fn main() -> Result<(), manic::Error> {
-//!     let client = Client::new();
 //!     let number_of_concurrent_tasks: u8 = 5;
-//!     let result = downloader::download(&client, "https://crates.io", number_of_concurrent_tasks).await?;
+//!     let client = Downloader::<Rustls>::new("https://crates.io", number_of_concurrent_tasks).await?;
+//!     let result = client.download().await?;
 //!     Ok(())
 //! }
 //! ```
@@ -36,13 +39,24 @@
 use std::num::ParseIntError;
 use thiserror::Error;
 use tokio::io;
+use std::fmt;
 
+pub(crate) mod chunk;
+/// This module is the main part of the crate
+pub mod downloader;
+/// Only available on feature `progress`
+#[cfg(any(feature = "progress"))]
+pub mod progress;
+pub mod utils;
 
+/// Type alias for Rustls connector
 #[cfg(feature = "rustls-tls")]
 pub type Rustls = hyper_rustls::HttpsConnector<hyper::client::HttpConnector>;
+/// Type alias for OpenSSL connector
 #[cfg(feature = "openssl-tls")]
 pub type OpenSSL = hyper_tls::HttpsConnector<hyper::client::HttpConnector>;
 
+/// Trait implemented for HTTPS connectors
 pub trait Connector: Clone + Send + Sync + 'static {
     fn new() -> Self;
 }
@@ -60,13 +74,6 @@ impl Connector for OpenSSL {
         hyper_tls::HttpsConnector::new()
     }
 }
-pub mod chunk;
-/// This module is the main part of the crate
-pub mod downloader;
-/// Only available on feature `progress`
-#[cfg(any(feature = "progress"))]
-pub mod progress;
-pub(crate) mod utils;
 
 /// Error definition for possible errors in this crate
 #[derive(Debug, Error)]
@@ -99,5 +106,23 @@ pub enum Error {
     REQError(#[from] http::Error),
 }
 
+/// Alias for Result<T, manic::Error>
 pub type Result<T> = std::result::Result<T, Error>;
 
+#[derive(Debug)]
+pub enum Hash {
+    SHA224(String),
+    SHA256(String),
+    SHA384(String),
+    SHA512(String),
+}
+impl fmt::Display for Hash {
+    fn fmt(&self, f: &mut fmt::Formatter<'_> ) -> fmt::Result {
+        match self {
+            Self::SHA224(val) => write!(f, "{}", val),
+            Self::SHA256(val) => write!(f, "{}", val),
+            Self::SHA384(val) => write!(f, "{}", val),
+            Self::SHA512(val) => write!(f, "{}", val),
+        }
+    }
+}

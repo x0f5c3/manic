@@ -1,16 +1,17 @@
 use tracing::instrument;
-use crate::Error;
+use crate::{Error, Hash};
 use hyper::header::CONTENT_LENGTH;
 use crate::Connector;
 use hyper::client::connect::Connect;
-use sha2::{Digest, Sha256};
+use sha2::{Digest, Sha256, Sha224, Sha512, Sha384};
 use tracing::debug;
 use hyper::Client;
 use crate::Result;
 use futures::Future;
 
+/// Get filename from the url, returns an error if the url contains no filename
 #[instrument(skip(url), fields(URL=%url))]
-pub fn get_filename(url: &str) -> Result<String> {
+pub(crate) fn get_filename(url: &str) -> Result<String> {
     let parsed_url = url.parse::<hyper::Uri>()?;
     parsed_url
         .path()
@@ -34,49 +35,59 @@ pub fn get_filename(url: &str) -> Result<String> {
 /// # Example
 ///
 /// ```
-/// use manic::downloader::compare_sha;
+/// use manic::utils::compare_sha;
 /// use manic::Error;
+/// use manic::Hash;
 /// # fn main() -> Result<(), Error> {
 ///     let data: &[u8] = &[1,2,3];
-///     let hash = "039058c6f2c0cb492c533b0a4d14ef77cc0f78abccced5287d84a1a2011cfb81";
-///     compare_sha(data,hash).unwrap();
+///     let hash = Hash::SHA256("039058c6f2c0cb492c533b0a4d14ef77cc0f78abccced5287d84a1a2011cfb81".to_string());
+///     compare_sha(&hash,data).unwrap();
 /// # Ok(())
 /// # }
 /// ```
-#[instrument(skip(data), fields(SHA=%hash))]
-pub fn compare_sha(hash: &str, data: &[u8]) -> Result<()> {
-    debug!("Comparing sum {}", hash);
-    let finally = Sha256::digest(data);
-    let hexed = format!("{:x}", finally);
+#[instrument(skip(data, hash), fields(SHA=%hash))]
+pub fn compare_sha(hash: &Hash, data: &[u8]) -> Result<()> {
+    let hashed = format!("{}", hash);
+    debug!("Comparing sum {}", hashed);
+    let hexed = match hash {
+        Hash::SHA256(_) => format!("{:x}",Sha256::digest(data)),
+        Hash::SHA224(_) => format!("{:x}",Sha224::digest(data)),
+        Hash::SHA512(_) => format!("{:x}",Sha512::digest(data)),
+        Hash::SHA384(_) => format!("{:x}",Sha384::digest(data)),
+    };
     debug!("SHA256 sum: {}", hexed);
-    if hexed == hash {
+    if hexed == hashed {
         debug!("SHA256 MATCH!");
         Ok(())
     } else {
         Err(Error::SHA256MisMatch(hexed))
     }
 }
-///
-/// Get filename from the url, returns an error if the url contains no filename
 /// Get the content-length header using a head request
 ///
 /// # Arguments
 ///
+/// * `client` - reference to a hyper [`Client`][hyper::Client] with Https type, [`Rustls`] or [`OpenSSL`]
 /// * `url` - &str with the url
-/// * `client` - optional reference to a reqwest [`Client`][reqwest::Client] in case custom settings are needed
 ///
 /// # Example
 ///
-///```no_run
-/// use manic::downloader;
+///```
+/// #[cfg(feature = "rustls-tls")]
+/// use manic::Rustls as Conn;
+/// #[cfg(feature = "openssl-tls")]
+/// use manic::OpenSSL as Conn;
+/// use manic::Connector;
 /// use manic::Error;
-/// use reqwest::Client;
+/// use hyper::Client;
+/// use manic::utils::get_length;
 ///
 /// # #[tokio::main]
 /// # async fn main() -> Result<(), Error> {
-///     let client = Client::new();
-///     let length = downloader::get_length("https://docs.rs", Some(&client)).await.unwrap();
-///     assert_eq!(25853, length);
+///     let connector = Conn::new();
+///     let client = Client::builder().build::<_, hyper::Body>(connector);
+///     let length = get_length(&client, "https://docs.rs").await.unwrap();
+///     assert_eq!(25257, length);
 /// #   Ok(())
 /// # }
 /// ```
@@ -94,7 +105,7 @@ pub async fn get_length(client: &Client<impl Connector + Connect>, url: &str) ->
         .map_err(Into::into)
 }
 
-pub async fn collect_results(handle_vec: Vec<impl Future<Output=Result<Vec<u8>>>>) -> Result<Vec<u8>> {
+pub(crate) async fn collect_results(handle_vec: Vec<impl Future<Output=Result<Vec<u8>>>>) -> Result<Vec<u8>> {
     let data = {
         let mut result = Vec::new();
         for i in handle_vec {

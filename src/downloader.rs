@@ -8,6 +8,7 @@ use tokio::io::AsyncWriteExt;
 use tracing::{debug, instrument};
 use hyper::client::connect::Connect;
 use crate::utils::*;
+use crate::Hash;
 
 #[derive(Debug)]
 pub struct Downloader<C>
@@ -15,7 +16,7 @@ where
     C: Connector + Connect,
 {
     client: Client<C>,
-    hash: Option<String>,
+    hash: Option<Hash>,
     chunks: Chunks,
     workers: u8,
     url: String,
@@ -28,6 +29,27 @@ impl<C> Downloader<C>
 where
     C: Connector + Connect,
 {
+    /// Create a new downloader
+    ///
+    /// # Arguments
+    /// * `url` - URL of the file
+    /// * `workers` - amount of concurrent tasks
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// use manic::downloader::Downloader;
+    /// #[cfg(feature = "rustls-tls")]
+    /// use manic::Rustls as TLS;
+    /// #[cfg(feature = "openssl-tls")]
+    /// use manic::OpenSSL as TLS;
+    ///
+    /// ##[tokio::main]
+    /// # async fn main() -> Result<(), manic::Error> {
+    ///     let dl = Downloader::<TLS>::new("https://crates.io", 5).await?;
+    /// #     Ok(())
+    /// # }
+    /// ```
     pub async fn new(url: &str, workers: u8) -> Result<Self, Error> {
         let connector = C::new();
         let client = Client::builder().build::<_, hyper::Body>(connector);
@@ -43,37 +65,27 @@ where
             verify: false,
         })
     }
-    pub fn verify(mut self, hash: &str) -> Self {
-        self.hash = Some(hash.to_string());
+    /// Set the SHA256 hash to check against
+    pub fn verify(mut self, hash: Hash) -> Self {
+        self.hash = Some(hash);
         self.verify = true;
         self
     }
-    /// # Arguments
-    ///
-    /// * `url` - &str with the url
-    ///
-    /// # Example
-    /// ```
-    /// use manic::downloader;
-    /// use manic::Error;
-    /// # fn main() -> Result<(), Error> {
-    ///     let name = downloader::get_filename("http://test.rs/test.zip")?;
-    ///     assert_eq!("test.zip", name);
-    /// # Ok(())
-    /// # }
-    /// ```
     /// Download the file
     ///
     /// # Example
     ///
     /// ```no_run
-    /// use reqwest::Client;
-    /// use manic::downloader;
+    /// #[cfg(feature = "rustls-tls")]
+    /// use manic::Rustls as Conn;
+    /// #[cfg(feature = "openssl-tls")]
+    /// use manic::OpenSSL as Conn;
+    /// use manic::downloader::Downloader;
     /// use manic::Error;
     /// # #[tokio::main]
     /// # async fn main() -> Result<(), Error> {
-    /// let client = Client::new();
-    /// let result = downloader::download(&client, "https://crates.io", 5).await?;
+    /// let dl = Downloader::<Conn>::new("https://crates.io", 5).await?;
+    /// let result = dl.download().await?;
     /// # Ok(())
     /// # }
     /// ```
@@ -92,23 +104,24 @@ where
     /// Used to download and verify against a SHA256 sum,
     /// returns an error if the connection fails or if the sum doesn't match the one provided
     ///
-    /// # Arguments
-    /// * `client` - reference to a reqwest [`Client`][reqwest::Client]
-    /// * `url` - &str with the url
-    /// * `workers` - amount of concurrent downloads
-    /// * `hash` - SHA256 sum to compare to
     ///
     /// # Example
     ///
     /// ```no_run
-    /// use reqwest::Client;
-    /// use manic::downloader;
+    /// #[cfg(feature = "rustls-tls")]
+    /// use manic::Rustls as Conn;
+    /// #[cfg(feature = "openssl-tls")]
+    /// use manic::OpenSSL as Conn;
+    /// use manic::downloader::Downloader;
     /// use manic::Error;
+    /// # use manic::Hash;
+    ///
     /// # #[tokio::main]
     /// # async fn main() -> Result<(), Error> {
-    /// # let hash = "039058c6f2c0cb492c533b0a4d14ef77cc0f78abccced5287d84a1a2011cfb81";
-    /// let client = Client::new();
-    /// let data = downloader::download_and_verify(&client,"https://crates.io", 5, hash).await?;
+    /// # let hash = Hash::SHA256("039058c6f2c0cb492c533b0a4d14ef77cc0f78abccced5287d84a1a2011cfb81".to_string());
+    /// let dl = Downloader::<Conn>::new("https://crates.io", 5).await?.verify(hash);
+    ///
+    /// let data = dl.download_and_verify().await?;
     /// # Ok(())
     /// # }
     /// ```
@@ -118,7 +131,7 @@ where
         let data = self.download().await?;
         debug!("Downloaded");
         if let Some(sha) = &self.hash {
-            compare_sha(&sha, &data)?;
+            compare_sha(sha, &data)?;
             debug!("Compared");
         }
         Ok(data)
@@ -128,24 +141,23 @@ where
     /// returns an error if the connection fails or if the sum doesn't match the one provided
     ///
     /// # Arguments
-    /// * `client` - reference to a reqwest [`Client`][reqwest::Client]
-    /// * `url` - &str with the url
-    /// * `workers` - amount of concurrent downloads
-    /// * `hash` - optional SHA256 sum to compare to
     /// * `path` - where to download the file
-    /// * `verify` - set true to verify the file against the hash
     ///
     /// # Example
     ///
     /// ```no_run
-    /// use manic::downloader;
+    /// #[cfg(feature = "rustls-tls")]
+    /// use manic::Rustls as Conn;
+    /// #[cfg(feature = "openssl-tls")]
+    /// use manic::OpenSSL as Conn;
+    /// use manic::downloader::Downloader;
     /// use manic::Error;
-    /// use reqwest::Client;
+    /// use manic::Hash;
     /// #[tokio::main]
     /// async fn main() -> Result<(), Error> {
-    ///     let client = Client::new();
-    ///     let hash = "039058c6f2c0cb492c533b0a4d14ef77cc0f78abccced5287d84a1a2011cfb81";
-    ///     let data = downloader::download_and_save(&client, "https://crates.io", 5, Some(hash), "~/Downloads", true).await?;
+    ///     let hash = Hash::SHA256("039058c6f2c0cb492c533b0a4d14ef77cc0f78abccced5287d84a1a2011cfb81".to_string());
+    ///     let dl = Downloader::<Conn>::new("https://crates.io", 5).await?.verify(hash);
+    ///     dl.download_and_save("~/Downloads/").await?;
     ///     Ok(())
     ///  }
     /// ```
