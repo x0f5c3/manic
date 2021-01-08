@@ -8,7 +8,6 @@ use hyper::Client;
 use sha2::{Digest, Sha224, Sha256, Sha384, Sha512};
 use tracing::debug;
 use tracing::instrument;
-use http::StatusCode;
 use http::header::LOCATION;
 
 /// Get filename from the url, returns an error if the url contains no filename
