@@ -1,4 +1,3 @@
-#![deny(missing_debug_implementations)]
 //! Fast and simple async downloads
 //!
 //! Provides easy to use functions to download a file using multiple async connections
@@ -17,112 +16,65 @@
 //!
 //!
 //! ## Crate usage
-//!
-//! # Example
-//!
 //! ```no_run
-//!
-//! use manic::downloader::Downloader;
+//! use manic::Downloader;
+//! // On feature `rustls-tls`
+//! # #[cfg(feature = "rustls-tls")]
 //! use manic::Rustls;
+//! // On feature `openssl-tls`
+//! # #[cfg(feature = "openssl-tls")]
+//! use manic::OpenSSL;
 //!
 //! #[tokio::main]
 //! async fn main() -> Result<(), manic::Error> {
 //!     let number_of_concurrent_tasks: u8 = 5;
+//!     // With `Rustls` if both features are enabled
+//!     # #[cfg(all(feature = "rustls-tls", feature = "openssl-tls"))]
 //!     let client = Downloader::<Rustls>::new("https://crates.io", number_of_concurrent_tasks).await?;
+//!
+//!     // With both features enabled also Openssl can be chosen like this:
+//!     # #[cfg(all(feature = "rustls-tls", feature = "openssl-tls"))]
+//!     let client = Downloader::<OpenSSL>::new("https://crates.io", number_of_concurrent_tasks).await?;
+//!
+//!     // If only one of the two TLS features is enabled,
+//!     // there's no need to specify the connector type, just need to use a convenient type alias
+//!     # #[cfg(any(all(feature = "rustls-tls", not(feature = "openssl-tls"), all(feature = "openssl-tls", not(feature = "rustls-tls")))))]
+//!     let client = Downloader::new("https://crates.io", number_of_concurrent_tasks).await?;
 //!     let result = client.download().await?;
 //!     Ok(())
 //! }
 //! ```
-//!
-//!
+#![deny(missing_debug_implementations)]
+#![allow(dead_code)]
+#![deny(missing_docs)]
 
-use std::num::ParseIntError;
-use thiserror::Error;
-use tokio::io;
-use std::fmt;
 
 pub(crate) mod chunk;
 /// This module is the main part of the crate
 pub mod downloader;
-/// Only available on feature `progress`
-#[cfg(any(feature = "progress"))]
-pub mod progress;
-pub mod utils;
+mod utils;
+/// Error definitions
+pub mod error;
+mod connector;
+mod types;
+#[doc(inline)]
+pub use error::Error;
+#[doc(inline)]
+pub use error::Result;
+#[doc(inline)]
+pub use types::Hash;
+#[doc(inline)]
+pub use connector::Connector;
 
-/// Type alias for Rustls connector
-#[cfg(feature = "rustls-tls")]
-pub type Rustls = hyper_rustls::HttpsConnector<hyper::client::HttpConnector>;
-/// Type alias for OpenSSL connector
-#[cfg(feature = "openssl-tls")]
-pub type OpenSSL = hyper_tls::HttpsConnector<hyper::client::HttpConnector>;
+#[cfg(any(all(feature = "openssl-tls", not(feature = "rustls-tls")),all(feature = "rustls-tls", not(feature = "openssl-tls"))))]
+pub use types::Downloader;
 
-/// Trait implemented for HTTPS connectors
-pub trait Connector: Clone + Send + Sync + 'static {
-    fn new() -> Self;
-}
+#[cfg(all(feature = "rustls-tls", feature = "openssl-tls"))]
+pub use downloader::Downloader;
 
-#[cfg(feature = "rustls-tls")]
-impl Connector for Rustls {
-    fn new() -> Self {
-        hyper_rustls::HttpsConnector::with_native_roots()
-    }
-}
+#[cfg(all(feature = "rustls-tls", feature = "openssl-tls"))]
+pub use connector::{Rustls, OpenSSL};
 
-#[cfg(feature = "openssl-tls")]
-impl Connector for OpenSSL {
-    fn new() -> Self {
-        hyper_tls::HttpsConnector::new()
-    }
-}
 
-/// Error definition for possible errors in this crate
-#[derive(Debug, Error)]
-pub enum Error {
-    /// Returned when the content length couldn't be parsed
-    #[error("Failed to parse content-length")]
-    LenParse(#[from] ParseIntError),
-    /// Represents problems with Tokio based IO
-    #[error("Tokio IO error: {0}")]
-    TokioIOError(#[from] io::Error),
-    /// Represents problems with network connectivity
-    #[error("hyper error: {0}")]
-    NetError(#[from] hyper::Error),
-    /// Returned when the header can't be parsed to a String
-    #[error(transparent)]
-    ToStr(#[from] hyper::header::ToStrError),
-    /// Returned when there's no filename in the url
-    #[error("No filename in url")]
-    NoFilename(String),
-    /// Returned when the url couldn't be parsed
-    #[error("Failed to parse URL")]
-    UrlParseError(#[from] http::uri::InvalidUri),
-    /// Returned when the SHA256 sum didn't match
-    #[error("Checksum doesn't match")]
-    SHA256MisMatch(String),
-    /// Returned when the selected chunk size == 0
-    #[error("Invalid chunk size")]
-    BadChunkSize,
-    #[error("Request builder error: {0}")]
-    REQError(#[from] http::Error),
-}
 
-/// Alias for Result<T, manic::Error>
-pub type Result<T> = std::result::Result<T, Error>;
 
-#[derive(Debug)]
-pub enum Hash {
-    SHA224(String),
-    SHA256(String),
-    SHA384(String),
-    SHA512(String),
-}
-impl fmt::Display for Hash {
-    fn fmt(&self, f: &mut fmt::Formatter<'_> ) -> fmt::Result {
-        match self {
-            Self::SHA224(val) => write!(f, "{}", val),
-            Self::SHA256(val) => write!(f, "{}", val),
-            Self::SHA384(val) => write!(f, "{}", val),
-            Self::SHA512(val) => write!(f, "{}", val),
-        }
-    }
-}

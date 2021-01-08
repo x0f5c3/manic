@@ -1,13 +1,15 @@
-use tracing::instrument;
-use crate::{Error, Hash};
-use hyper::header::CONTENT_LENGTH;
 use crate::Connector;
-use hyper::client::connect::Connect;
-use sha2::{Digest, Sha256, Sha224, Sha512, Sha384};
-use tracing::debug;
-use hyper::Client;
 use crate::Result;
+use crate::{Error, Hash};
 use futures::Future;
+use hyper::client::connect::Connect;
+use hyper::header::CONTENT_LENGTH;
+use hyper::Client;
+use sha2::{Digest, Sha224, Sha256, Sha384, Sha512};
+use tracing::debug;
+use tracing::instrument;
+use http::StatusCode;
+use http::header::LOCATION;
 
 /// Get filename from the url, returns an error if the url contains no filename
 #[instrument(skip(url), fields(URL=%url))]
@@ -50,10 +52,10 @@ pub fn compare_sha(hash: &Hash, data: &[u8]) -> Result<()> {
     let hashed = format!("{}", hash);
     debug!("Comparing sum {}", hashed);
     let hexed = match hash {
-        Hash::SHA256(_) => format!("{:x}",Sha256::digest(data)),
-        Hash::SHA224(_) => format!("{:x}",Sha224::digest(data)),
-        Hash::SHA512(_) => format!("{:x}",Sha512::digest(data)),
-        Hash::SHA384(_) => format!("{:x}",Sha384::digest(data)),
+        Hash::SHA256(_) => format!("{:x}", Sha256::digest(data)),
+        Hash::SHA224(_) => format!("{:x}", Sha224::digest(data)),
+        Hash::SHA512(_) => format!("{:x}", Sha512::digest(data)),
+        Hash::SHA384(_) => format!("{:x}", Sha384::digest(data)),
     };
     debug!("SHA256 sum: {}", hexed);
     if hexed == hashed {
@@ -72,7 +74,7 @@ pub fn compare_sha(hash: &Hash, data: &[u8]) -> Result<()> {
 ///
 /// # Example
 ///
-///```
+///```no_run
 /// #[cfg(feature = "rustls-tls")]
 /// use manic::Rustls as Conn;
 /// #[cfg(feature = "openssl-tls")]
@@ -87,7 +89,6 @@ pub fn compare_sha(hash: &Hash, data: &[u8]) -> Result<()> {
 ///     let connector = Conn::new();
 ///     let client = Client::builder().build::<_, hyper::Body>(connector);
 ///     let length = get_length(&client, "https://docs.rs").await.unwrap();
-///     assert_eq!(25257, length);
 /// #   Ok(())
 /// # }
 /// ```
@@ -105,7 +106,35 @@ pub async fn get_length(client: &Client<impl Connector + Connect>, url: &str) ->
         .map_err(Into::into)
 }
 
-pub(crate) async fn collect_results(handle_vec: Vec<impl Future<Output=Result<Vec<u8>>>>) -> Result<Vec<u8>> {
+pub async fn check_redirects(client: &Client<impl Connector + Connect>, url: &str) -> Result<Option<String>> {
+    let req = hyper::Request::head(url)
+        .body(hyper::Body::empty())
+        .map_err(|e| Error::REQError(e))?;
+    let head_req = client.request(req.into()).await?;
+    let status = head_req.status().as_u16();
+    if status == 301 || status == 308 || status == 302 || status == 303 || status == 307 {
+        let loc = head_req.headers()[LOCATION].to_str()?;
+        let uri = loc.parse::<hyper::Uri>()?;
+        let path = if uri.host().is_some() {
+            loc.to_string()
+        } else {
+            let original = url.parse::<hyper::Uri>()?;
+            let mut part = original.into_parts();
+            let new_path = uri.path_and_query().ok_or(Error::BadChunkSize)?.to_owned();
+            part.path_and_query = Some(new_path);
+            let new_url = hyper::Uri::from_parts(part).unwrap().to_string();
+            new_url
+
+        };
+        Ok(Some(path))
+    } else {
+        Ok(None)
+    }
+}
+
+pub(crate) async fn collect_results(
+    handle_vec: Vec<impl Future<Output = Result<Vec<u8>>>>,
+) -> Result<Vec<u8>> {
     let data = {
         let mut result = Vec::new();
         for i in handle_vec {
@@ -118,4 +147,3 @@ pub(crate) async fn collect_results(handle_vec: Vec<impl Future<Output=Result<Ve
     };
     Ok(data)
 }
-

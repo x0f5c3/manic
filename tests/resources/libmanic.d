@@ -1,0 +1,1 @@
+C:\Users\xC5\Projects\manic\target\release\libmanic.rlib: C:\Users\xC5\Projects\manic\src\chunk.rs C:\Users\xC5\Projects\manic\src\connector.rs C:\Users\xC5\Projects\manic\src\downloader.rs C:\Users\xC5\Projects\manic\src\error.rs C:\Users\xC5\Projects\manic\src\lib.rs C:\Users\xC5\Projects\manic\src\types.rs C:\Users\xC5\Projects\manic\src\utils.rs

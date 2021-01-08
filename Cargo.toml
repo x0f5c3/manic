@@ -38,7 +38,7 @@ hyper-tls = { version = "*", optional = true }
 http = "*"
 tokio-stream = "0.1.0"
 futures = "*"
-
+async-trait = "*"
 
 [dev-dependencies]
 httpmock = "0.5.2"

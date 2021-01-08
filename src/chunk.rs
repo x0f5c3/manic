@@ -1,9 +1,11 @@
 use crate::Connector;
-use crate::Error;
+use hyper::client::connect::Connect;
 use hyper::header::RANGE;
 use hyper::Client;
+use tokio_stream::StreamExt;
 use tracing::instrument;
-use hyper::client::connect::Connect;
+use crate::Result;
+use crate::Error;
 
 /// Iterator over remote file chunks that returns a formatted [`RANGE`][hyper::header::RANGE] header value
 #[derive(Debug, Copy, Clone)]
@@ -19,7 +21,7 @@ impl Chunks {
     /// * `low` - the first byte of the file, typically 0
     /// * `hi` - the highest value in bytes, typically content-length - 1
     /// * `chunk_size` - the desired size of the chunks
-    pub fn new(low: u64, hi: u64, chunk_size: u32) -> Result<Self, Error> {
+    pub fn new(low: u64, hi: u64, chunk_size: u32) -> Result<Self> {
         if chunk_size == 0 {
             return Err(Error::BadChunkSize);
         }
@@ -43,17 +45,42 @@ impl Iterator for Chunks {
         }
     }
 }
-
+#[cfg(not(feature = "progress"))]
 #[instrument(skip(client))]
 pub async fn download(
     val: String,
     url: &str,
     client: &Client<impl Connector + Connect>,
-) -> Result<Vec<u8>, Error> {
+) -> Result<Vec<u8>> {
+    let mut res = Vec::new();
     let req = hyper::Request::get(url)
         .header(RANGE, val)
         .body(hyper::Body::empty())?;
-    let resp = client.request(req.into()).await?.into_body();
-    let bytes = hyper::body::to_bytes(resp).await?;
-    Ok(bytes.as_ref().to_vec())
+    let mut resp = client.request(req.into()).await?.into_body();
+    while let Some(Ok(chunk)) = resp.next().await {
+        res.append(&mut chunk.to_vec());
+    }
+    Ok(res)
 }
+#[cfg(feature = "progress")]
+#[instrument(skip(client))]
+pub async fn download(
+    val: String,
+    url: &str,
+    client: &Client<impl Connector + Connect>,
+    pb: &Option<indicatif::ProgressBar>,
+) -> Result<Vec<u8>> {
+    let mut res = Vec::new();
+    let req = hyper::Request::get(url)
+        .header(RANGE, val)
+        .body(hyper::Body::empty())?;
+    let mut resp = client.request(req.into()).await?.into_body();
+    while let Some(Ok(chunk)) = resp.next().await {
+        if let Some(bar) = pb {
+            bar.inc(chunk.len() as u64);
+        }
+        res.append(&mut chunk.to_vec());
+    }
+    Ok(res)
+}
+
