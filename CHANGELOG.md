@@ -1,3 +1,6 @@
+# v0.3.5 (2021-1-9)
+- [Bumped] tokio to 1.0 and reqwest to 0.11.0, move to version 0.3.5
+
 # v0.3.0 (2020-12-27)
 - [Improved] documentation
 - [Changed] download and save function to allow downloading without checking against the hash
