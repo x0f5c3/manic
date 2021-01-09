@@ -9,7 +9,7 @@ repository = "https://github.com/x0f5c3/manic"
 license = "MIT OR Apache-2.0"
 keywords = ["download", "http", "async"]
 categories = ["asynchronous","web-programming::http-client", "network-programming"]
-exclude = ["_git-journal", "git-journal*", ".gitjournal.toml", "template.toml"]
+exclude = ["_git-journal", "git-journal*", ".gitjournal.toml", "template.toml", ".idea"]
 
 [package.metadata.docs.rs]
 all-features = true

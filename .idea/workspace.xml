@@ -13,7 +13,8 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="0796e902-4bbc-4b85-8fb7-87c4bd648cec" name="Default Changelist" comment="">
-      <change beforePath="$PROJECT_DIR$/CHANGELOG.md" beforeDir="false" afterPath="$PROJECT_DIR$/CHANGELOG.md" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Cargo.toml" beforeDir="false" afterPath="$PROJECT_DIR$/Cargo.toml" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -159,7 +160,7 @@
       <workItem from="1610197487140" duration="86000" />
       <workItem from="1610197583886" duration="82000" />
       <workItem from="1610197675907" duration="53000" />
-      <workItem from="1610197760475" duration="924000" />
+      <workItem from="1610197760475" duration="1830000" />
     </task>
     <task id="LOCAL-00001" summary="Changed to hyper and tokio 1.0">
       <created>1609704885689</created>
