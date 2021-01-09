@@ -5,8 +5,8 @@ use reqwest::Client;
 use sha2::{Digest, Sha256};
 use std::path::Path;
 use tokio::fs::File;
-use tokio::prelude::*;
 use tracing::{debug, instrument};
+use tokio::io::AsyncWriteExt;
 
 /// Get the content-length header using a head request
 ///

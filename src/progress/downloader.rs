@@ -6,7 +6,7 @@ use indicatif::ProgressBar;
 use reqwest::Client;
 use std::path::Path;
 use tokio::fs::File;
-use tokio::prelude::*;
+use tokio::io::AsyncWriteExt;
 use tracing::{debug, instrument};
 
 /// Download the file with a progress bar using indicatif.

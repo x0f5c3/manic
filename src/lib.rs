@@ -37,12 +37,12 @@ use std::num::ParseIntError;
 use thiserror::Error;
 use tokio::io;
 
-pub mod chunk;
 /// This module is the main part of the crate
 pub mod downloader;
 /// Only available on feature `progress`
 #[cfg(any(feature = "progress"))]
 pub mod progress;
+pub mod chunk;
 
 /// Error definition for possible errors in this crate
 #[derive(Debug, Error)]
