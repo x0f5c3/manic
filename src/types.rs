@@ -1,11 +1,11 @@
 use std::fmt;
 
-#[cfg(all(feature = "openssl-tls", not(feature = "rustls-tls")))]
+#[cfg(feature = "openssl-tls")]
 /// Alias for a Downloader with OpenSSL [`HttpsConnector`][hyper_tls::HttpsConnector]
-pub type Downloader = crate::downloader::Downloader<crate::connector::OpenSSL>;
-#[cfg(all(feature = "rustls-tls", not(feature = "openssl-tls")))]
+pub type OpenSslDl = crate::downloader::Downloader<crate::OpenSSL>;
+#[cfg(feature = "rustls-tls")]
 /// Alias for a Downloader with Rustls [`HttpsConnector`][hyper_rustls::HttpsConnector]
-pub type Downloader = crate::downloader::Downloader<crate::connector::Rustls>;
+pub type RustlsDl = crate::downloader::Downloader<crate::Rustls>;
 
 /// Available checksum types
 #[derive(Debug)]
@@ -22,10 +22,9 @@ pub enum Hash {
 impl fmt::Display for Hash {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self::SHA224(val) |
-            Self::SHA256(val) |
-            Self::SHA384(val) |
-            Self::SHA512(val) => write!(f, "{}", val),
+            Self::SHA224(val) | Self::SHA256(val) | Self::SHA384(val) | Self::SHA512(val) => {
+                write!(f, "{}", val)
+            }
         }
     }
 }

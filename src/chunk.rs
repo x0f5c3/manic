@@ -1,11 +1,10 @@
-use crate::Connector;
+use crate::Error;
+use crate::Result;
 use hyper::client::connect::Connect;
 use hyper::header::RANGE;
-use hyper::Client;
+use hyper::{Client, Uri};
 use tokio_stream::StreamExt;
 use tracing::instrument;
-use crate::Result;
-use crate::Error;
 
 /// Iterator over remote file chunks that returns a formatted [`RANGE`][hyper::header::RANGE] header value
 #[derive(Debug, Copy, Clone)]
@@ -47,11 +46,10 @@ impl Iterator for Chunks {
 }
 #[cfg(not(feature = "progress"))]
 #[instrument(skip(client))]
-pub async fn download(
-    val: String,
-    url: &str,
-    client: &Client<impl Connector + Connect>,
-) -> Result<Vec<u8>> {
+pub async fn download<C>(val: String, url: &Uri, client: &Client<C>) -> Result<Vec<u8>>
+where
+    C: Connect + Send + Sync + Clone + 'static,
+{
     let mut res = Vec::new();
     let req = hyper::Request::get(url)
         .header(RANGE, val)
@@ -64,12 +62,15 @@ pub async fn download(
 }
 #[cfg(feature = "progress")]
 #[instrument(skip(client))]
-pub async fn download(
+pub async fn download<C>(
     val: String,
-    url: &str,
-    client: &Client<impl Connector + Connect>,
+    url: &Uri,
+    client: &Client<C>,
     pb: &Option<indicatif::ProgressBar>,
-) -> Result<Vec<u8>> {
+) -> Result<Vec<u8>>
+where
+    C: Connect + Send + Sync + Clone + 'static,
+{
     let mut res = Vec::new();
     let req = hyper::Request::get(url)
         .header(RANGE, val)
@@ -83,4 +84,3 @@ pub async fn download(
     }
     Ok(res)
 }
-

@@ -32,8 +32,10 @@ pub enum Error {
     /// Error thrown when there's an error building a hyper request
     #[error("Request builder error: {0}")]
     REQError(#[from] http::Error),
+    /// Failed creating an Uri from parts
+    #[error("From parts error: {0}")]
+    PartsError(#[from] http::uri::InvalidUriParts),
 }
-
 
 /// Alias for Result<T, manic::Error>
 pub type Result<T> = std::result::Result<T, Error>;

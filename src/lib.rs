@@ -46,35 +46,35 @@
 //! ```
 #![deny(missing_debug_implementations)]
 #![allow(dead_code)]
-#![deny(missing_docs)]
-
+#![warn(missing_docs)]
 
 pub(crate) mod chunk;
 /// This module is the main part of the crate
 pub mod downloader;
-mod utils;
 /// Error definitions
 pub mod error;
-mod connector;
+mod traits;
 mod types;
 #[doc(inline)]
 pub use error::Error;
 #[doc(inline)]
 pub use error::Result;
 #[doc(inline)]
-pub use types::Hash;
+pub use traits::{ClientExt, Connector};
 #[doc(inline)]
-pub use connector::Connector;
+pub use types::Hash;
 
-#[cfg(any(all(feature = "openssl-tls", not(feature = "rustls-tls")),all(feature = "rustls-tls", not(feature = "openssl-tls"))))]
-pub use types::Downloader;
+#[cfg(feature = "openssl-tls")]
+pub use types::OpenSslDl;
+#[cfg(feature = "rustls-tls")]
+pub use types::RustlsDl;
 
-#[cfg(all(feature = "rustls-tls", feature = "openssl-tls"))]
+#[doc(inline)]
 pub use downloader::Downloader;
 
-#[cfg(all(feature = "rustls-tls", feature = "openssl-tls"))]
-pub use connector::{Rustls, OpenSSL};
-
-
-
-
+/// Type alias for Rustls connector
+#[cfg(feature = "rustls-tls")]
+pub type Rustls = hyper_rustls::HttpsConnector<hyper::client::HttpConnector>;
+/// Type alias for OpenSSL connector
+#[cfg(feature = "openssl-tls")]
+pub type OpenSSL = hyper_tls::HttpsConnector<hyper::client::HttpConnector>;
