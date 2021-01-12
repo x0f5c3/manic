@@ -23,6 +23,7 @@ default = ["rustls-tls"]
 progress = ["indicatif"]
 rustls-tls = ["hyper-rustls"]
 openssl-tls = ["hyper-tls"]
+github = ["serde", "serde_json"]
 
 [dependencies]
 tokio = { version = "1.0.1", features = ["rt-multi-thread", "io-util", "fs", "test-util"] }
@@ -39,6 +40,8 @@ http = "*"
 tokio-stream = "0.1.0"
 futures = "*"
 async-trait = "*"
+serde = { version = "*", features = ["derive"], optional = true }
+serde_json = { version = "*", optional = true }
 
 [dev-dependencies]
 httpmock = "0.5.2"

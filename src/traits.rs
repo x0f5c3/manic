@@ -2,6 +2,8 @@ use crate::{Error, Result};
 use async_trait::async_trait;
 use hyper::client::connect::Connect;
 use hyper::header::{CONTENT_LENGTH, LOCATION};
+#[cfg(feature = "github")]
+use serde::Deserialize;
 use tracing::debug;
 
 /// Trait implemented for HTTPS connectors
@@ -37,7 +39,8 @@ where
     C: Connect + Send + Sync + Clone + 'static,
 {
     /// Check for redirects and return the new url or the old one
-    async fn check_redirects(&self, url: hyper::Uri) -> Result<hyper::Uri> {
+    async fn check_redirects(&self, url: hyper::Uri) -> Result<hyper::Uri>
+where {
         let req = hyper::Request::head(&url)
             .body(hyper::Body::empty())
             .map_err(|e| Error::REQError(e))?;

@@ -64,6 +64,10 @@ pub use traits::{ClientExt, Connector};
 #[doc(inline)]
 pub use types::Hash;
 
+mod client;
+#[cfg(feature = "github")]
+pub mod github;
+
 #[cfg(feature = "openssl-tls")]
 pub use types::OpenSslDl;
 #[cfg(feature = "rustls-tls")]
