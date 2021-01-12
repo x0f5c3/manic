@@ -1,14 +1,13 @@
 use crate::Error;
 use crate::Result;
+use async_trait::async_trait;
 use hyper::client::connect::Connect;
 use hyper::client::HttpConnector;
-use hyper::header::LOCATION;
+use hyper::header::{LOCATION, CONTENT_LENGTH};
 use hyper::{Body, Request, Response};
-use serde::Deserialize;
-use async_trait::async_trait;
-use futures::StreamExt;
-use hyper::body::Bytes;
+#[cfg(feature = "json")]
 use serde::de::DeserializeOwned;
+
 #[macro_use]
 macro_rules! head {
     ($url:expr) => {
@@ -22,8 +21,9 @@ macro_rules! head {
             .map_err(|e| Error::REQError(e))
     };
 }
-#[derive(Debug, Clone)]
-pub struct Builder<C>
+
+#[derive(Debug, Clone, Default)]
+pub struct ClientBuilder<C>
 where
     C: Connect + Send + Sync + Clone,
 {
@@ -32,20 +32,20 @@ where
 }
 
 #[cfg(feature = "rustls-tls")]
-impl Builder<hyper_rustls::HttpsConnector<HttpConnector>> {
+impl ClientBuilder<hyper_rustls::HttpsConnector<HttpConnector>> {
     pub fn rustls() -> Self {
         Self::new(hyper_rustls::HttpsConnector::with_native_roots())
     }
 }
 
 #[cfg(feature = "openssl-tls")]
-impl Builder<hyper_tls::HttpsConnector<HttpConnector>> {
+impl ClientBuilder<hyper_tls::HttpsConnector<HttpConnector>> {
     pub fn openssl() -> Self {
         Self::new(hyper_tls::HttpsConnector::new())
     }
 }
 
-impl<C> Builder<C>
+impl<C> ClientBuilder<C>
 where
     C: Connect + Send + Sync + Clone,
 {
@@ -159,19 +159,29 @@ where
     }
 }
 
+#[cfg(feature = "json")]
 #[async_trait]
-pub trait Resp {
-    async fn json<T:DeserializeOwned>(self) -> Result<T>;
+pub trait ResponseExt {
+    async fn json<T: DeserializeOwned>(self) -> Result<T>;
+    async fn content_length(&self) -> Result<u64>;
 }
 
+
+#[cfg(feature = "json")]
 #[async_trait]
-impl Resp for Response<Body> {
+impl ResponseExt for Response<Body> {
     async fn json<T>(self) -> Result<T>
     where
-        T: DeserializeOwned
+        T: DeserializeOwned,
     {
         let full = hyper::body::to_bytes(self).await?;
         serde_json::from_slice(&full).map_err(|e| Error::SerError(e))
-
+    }
+    async fn content_length(&self) -> Result<u64> {
+        let heads = self.headers();
+        heads[CONTENT_LENGTH]
+            .to_str()?
+            .parse::<u64>()
+            .map_err(Into::into)
     }
 }
