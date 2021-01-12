@@ -4,7 +4,11 @@ use hyper::client::connect::Connect;
 use hyper::client::HttpConnector;
 use hyper::header::LOCATION;
 use hyper::{Body, Request, Response};
-
+use serde::Deserialize;
+use async_trait::async_trait;
+use futures::StreamExt;
+use hyper::body::Bytes;
+use serde::de::DeserializeOwned;
 #[macro_use]
 macro_rules! head {
     ($url:expr) => {
@@ -152,5 +156,22 @@ where
                 .await
                 .map_err(|e| Error::NetError(e))
         };
+    }
+}
+
+#[async_trait]
+pub trait Resp {
+    async fn json<T:DeserializeOwned>(self) -> Result<T>;
+}
+
+#[async_trait]
+impl Resp for Response<Body> {
+    async fn json<T>(self) -> Result<T>
+    where
+        T: DeserializeOwned
+    {
+        let full = hyper::body::to_bytes(self).await?;
+        serde_json::from_slice(&full).map_err(|e| Error::SerError(e))
+
     }
 }
