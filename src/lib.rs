@@ -64,7 +64,8 @@ pub use traits::{ClientExt, Connector};
 #[doc(inline)]
 pub use types::Hash;
 
-mod client;
+pub mod client;
+pub use client::{Client, ClientBuilder};
 #[cfg(feature = "github")]
 pub mod github;
 
