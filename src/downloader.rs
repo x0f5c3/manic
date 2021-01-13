@@ -1,11 +1,11 @@
 use crate::chunk::{self, Chunks};
-use crate::ClientExt;
+use crate::ClientBuilder;
 use crate::Hash;
 use crate::Result;
 use crate::{Connector, Error};
 use futures::Future;
 use hyper::client::connect::Connect;
-use hyper::Client;
+use crate::Client;
 use sha2::{Digest, Sha224, Sha256, Sha384, Sha512};
 use std::path::Path;
 use tokio::fs::File;
@@ -63,10 +63,9 @@ where
     /// ```
     pub async fn new(url: &str, workers: u8) -> Result<Self> {
         let connector = C::new();
-        let client = Client::builder().build::<_, hyper::Body>(connector);
+        let client = ClientBuilder::new(connector).follow_redirects().build();
         let uri = url.parse::<hyper::Uri>()?;
-        let redirect = client.check_redirects(uri).await?;
-        let len = client.content_length(&redirect).await?;
+        let len = client.content_length(url).await?;
         let chunks = Chunks::new(0, len - 1, (len / workers as u64) as u32)?;
         #[cfg(not(feature = "progress"))]
         return Ok(Self {
@@ -74,7 +73,7 @@ where
             hash: None,
             chunks,
             workers,
-            url: redirect,
+            url: uri,
             length: len,
             verify: false,
         });
@@ -84,7 +83,7 @@ where
             hash: None,
             chunks,
             workers,
-            url: redirect,
+            url: uri,
             length: len,
             verify: false,
             bar: None,

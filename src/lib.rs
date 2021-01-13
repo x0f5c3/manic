@@ -60,12 +60,14 @@ pub use error::Error;
 #[doc(inline)]
 pub use error::Result;
 #[doc(inline)]
-pub use traits::{ClientExt, Connector};
+pub use traits::{Connector};
 #[doc(inline)]
 pub use types::Hash;
-
-mod client;
+/// Client
+pub mod client;
+pub use client::{Client, Response, ClientBuilder};
 #[cfg(feature = "github")]
+/// Interaction with github repos
 pub mod github;
 
 #[cfg(feature = "openssl-tls")]

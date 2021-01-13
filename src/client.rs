@@ -1,10 +1,9 @@
 use crate::Error;
 use crate::Result;
-use async_trait::async_trait;
 use hyper::client::connect::Connect;
 use hyper::client::HttpConnector;
 use hyper::header::{LOCATION, CONTENT_LENGTH};
-use hyper::{Body, Request, Response};
+use hyper::{Body, Request};
 #[cfg(feature = "json")]
 use serde::de::DeserializeOwned;
 
@@ -22,6 +21,7 @@ macro_rules! head {
     };
 }
 
+/// Builder pattern for [`Client`][crate::Client]
 #[derive(Debug, Clone, Default)]
 pub struct ClientBuilder<C>
 where
@@ -33,6 +33,7 @@ where
 
 #[cfg(feature = "rustls-tls")]
 impl ClientBuilder<hyper_rustls::HttpsConnector<HttpConnector>> {
+    /// Construct with rustls
     pub fn rustls() -> Self {
         Self::new(hyper_rustls::HttpsConnector::with_native_roots())
     }
@@ -40,6 +41,7 @@ impl ClientBuilder<hyper_rustls::HttpsConnector<HttpConnector>> {
 
 #[cfg(feature = "openssl-tls")]
 impl ClientBuilder<hyper_tls::HttpsConnector<HttpConnector>> {
+    /// Construct with openssl
     pub fn openssl() -> Self {
         Self::new(hyper_tls::HttpsConnector::new())
     }
@@ -49,16 +51,19 @@ impl<C> ClientBuilder<C>
 where
     C: Connect + Send + Sync + Clone,
 {
+    /// New ClientBuilder with hyper https Connector
     pub fn new(c: C) -> Self {
         Self {
             redirects: false,
             connector: c,
         }
     }
+    /// Follow redirects
     pub fn follow_redirects(mut self) -> Self {
         self.redirects = true;
         self
     }
+    /// Build the client
     pub fn build(self) -> Client<C> {
         let client = hyper::Client::builder().build::<_, Body>(self.connector);
         Client {
@@ -68,6 +73,7 @@ where
     }
 }
 
+/// Wrapper for [`hyper::Client`][hyper::Client]
 #[derive(Debug, Clone)]
 pub struct Client<C>
 where
@@ -79,6 +85,7 @@ where
 
 #[cfg(feature = "rustls-tls")]
 impl Client<hyper_rustls::HttpsConnector<HttpConnector>> {
+    /// Construct the client with Rustls connector
     pub fn new_rustls() -> Self {
         let conn = hyper_rustls::HttpsConnector::with_native_roots();
         let client = hyper::Client::builder().build(conn);
@@ -91,6 +98,7 @@ impl Client<hyper_rustls::HttpsConnector<HttpConnector>> {
 
 #[cfg(feature = "openssl-tls")]
 impl Client<hyper_tls::HttpsConnector<HttpConnector>> {
+    /// Construct the client with OpenSSL connector
     pub fn new_openssl() -> Self {
         let conn = hyper_tls::HttpsConnector::new();
         let client = hyper::Client::builder().build(conn);
@@ -105,6 +113,7 @@ impl<C> Client<C>
 where
     C: Connect + Send + Sync + Clone + 'static + Unpin,
 {
+    /// Follow redirects
     pub fn follow_redirects(&mut self) {
         self.redirects = true;
     }
@@ -128,7 +137,17 @@ where
             Ok(url)
         }
     }
-    pub async fn head(&self, url: &str) -> Result<hyper::Response<hyper::Body>> {
+    /// Get the content-length from the url
+    pub async fn content_length(&self, url: &str) -> Result<u64> {
+        let head = self.head(url).await?;
+        head.content_length().await
+    }
+    /// Make the custom request
+    pub async fn request(&self, req: hyper::Request<Body>) -> Result<Response> {
+        self.client.request(req).await.map(|e| e.into()).map_err(|e| Error::NetError(e))
+    }
+    /// Perform a HEAD request
+    pub async fn head(&self, url: &str) -> Result<Response> {
         let parsed = url.parse::<hyper::Uri>()?;
         return if self.redirects {
             let new = self.check_redirects(parsed.clone()).await?;
@@ -136,52 +155,62 @@ where
             self.client
                 .request(req.into())
                 .await
+                .map(|x| x.into())
                 .map_err(|e| Error::NetError(e))
         } else {
             let req = head!(&parsed)?;
             self.client
                 .request(req.into())
                 .await
+                .map(|x| x.into())
                 .map_err(|e| Error::NetError(e))
         };
     }
-    pub async fn get(&self, url: &str) -> Result<Response<Body>> {
+    /// Perform a GET request
+    pub async fn get(&self, url: &str) -> Result<Response> {
         let parsed = url.parse::<hyper::Uri>()?;
         return if self.redirects {
             let new = self.check_redirects(parsed.clone()).await?;
-            self.client.get(new).await.map_err(|e| Error::NetError(e))
+            self.client.get(new).await.map(|x| x.into()).map_err(|e| Error::NetError(e))
         } else {
             self.client
                 .get(parsed)
                 .await
+                .map(|x| x.into())
                 .map_err(|e| Error::NetError(e))
         };
     }
 }
 
-#[cfg(feature = "json")]
-#[async_trait]
-pub trait ResponseExt {
-    async fn json<T: DeserializeOwned>(self) -> Result<T>;
-    async fn content_length(&self) -> Result<u64>;
+/// Wrapper for [`Response`][hyper::Response]
+#[derive(Debug)]
+pub struct Response(pub(crate) hyper::Response<Body>);
+
+impl From<hyper::Response<Body>> for Response {
+    fn from(resp: hyper::Response<Body>) -> Self {
+        Self(resp)
+    }
 }
 
-
-#[cfg(feature = "json")]
-#[async_trait]
-impl ResponseExt for Response<Body> {
-    async fn json<T>(self) -> Result<T>
-    where
-        T: DeserializeOwned,
-    {
-        let full = hyper::body::to_bytes(self).await?;
+impl Response {
+    /// Deserialize from json
+    #[cfg(feature = "json")]
+    pub async fn json<T: DeserializeOwned>(self) -> Result<T> {
+        let full = hyper::body::to_bytes(self.0).await?;
         serde_json::from_slice(&full).map_err(|e| Error::SerError(e))
     }
-    async fn content_length(&self) -> Result<u64> {
-        let heads = self.headers();
+    /// Get the content-length from Response
+    pub async fn content_length(&self) -> Result<u64> {
+        let heads = self.0.headers();
         heads[CONTENT_LENGTH]
             .to_str()?
             .parse::<u64>()
             .map_err(Into::into)
     }
+    /// Extract text from Response
+    pub async fn text(self) -> Result<String> {
+        let full = hyper::body::to_bytes(self.0).await?;
+        String::from_utf8(full.to_vec()).map_err(|e| Error::UTF8(e))
+    }
 }
+

@@ -1,4 +1,6 @@
 use serde::{Deserialize, Serialize};
+use crate::Result;
+use hyper::client::connect::Connect;
 
 #[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -151,4 +153,15 @@ pub struct Tag {
 pub struct Commit {
     pub sha: String,
     pub url: String,
+}
+
+impl Release {
+    pub async fn latest<C>(repo: &str, client: crate::Client<C>) -> Result<Self>
+    where
+        C: Connect + Clone + Sync + Send + Unpin + 'static
+    {
+        let url = format!("https://api.github.com/repos/{}/releases/latest", repo);
+        client.get(&url).await?.json().await
+
+    }
 }

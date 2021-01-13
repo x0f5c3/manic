@@ -1,6 +1,7 @@
 use std::num::ParseIntError;
 use thiserror::Error;
 use tokio::io;
+use std::string::FromUtf8Error;
 
 /// Error definition for possible errors in this crate
 #[derive(Debug, Error)]
@@ -38,6 +39,8 @@ pub enum Error {
     #[cfg(feature = "github")]
     #[error("Serde error: {0}")]
     SerError(#[from] serde_json::Error),
+    #[error("UTF8 Error: {0}")]
+    UTF8(#[from] FromUtf8Error),
 }
 
 /// Alias for Result<T, manic::Error>

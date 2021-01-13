@@ -2,7 +2,8 @@ use crate::Error;
 use crate::Result;
 use hyper::client::connect::Connect;
 use hyper::header::RANGE;
-use hyper::{Client, Uri};
+use hyper::Uri;
+use crate::Client;
 use tokio_stream::StreamExt;
 use tracing::instrument;
 
@@ -48,13 +49,13 @@ impl Iterator for Chunks {
 #[instrument(skip(client))]
 pub async fn download<C>(val: String, url: &Uri, client: &Client<C>) -> Result<Vec<u8>>
 where
-    C: Connect + Send + Sync + Clone + 'static,
+    C: Connect + Send + Sync + Clone + 'static + Unpin,
 {
     let mut res = Vec::new();
     let req = hyper::Request::get(url)
         .header(RANGE, val)
         .body(hyper::Body::empty())?;
-    let mut resp = client.request(req.into()).await?.into_body();
+    let mut resp = client.request(req.into()).await?.0.into_body();
     while let Some(Ok(chunk)) = resp.next().await {
         res.append(&mut chunk.to_vec());
     }
@@ -69,13 +70,13 @@ pub async fn download<C>(
     pb: &Option<indicatif::ProgressBar>,
 ) -> Result<Vec<u8>>
 where
-    C: Connect + Send + Sync + Clone + 'static,
+    C: Connect + Send + Sync + Clone + 'static + Unpin,
 {
     let mut res = Vec::new();
     let req = hyper::Request::get(url)
         .header(RANGE, val)
         .body(hyper::Body::empty())?;
-    let mut resp = client.request(req.into()).await?.into_body();
+    let mut resp = client.request(req.into()).await?.0.into_body();
     while let Some(Ok(chunk)) = resp.next().await {
         if let Some(bar) = pb {
             bar.inc(chunk.len() as u64);
