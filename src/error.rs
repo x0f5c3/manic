@@ -35,7 +35,7 @@ pub enum Error {
     /// Failed creating an Uri from parts
     #[error("From parts error: {0}")]
     PartsError(#[from] http::uri::InvalidUriParts),
-    #[cfg(feature = "github")]
+    #[cfg(feature = "json")]
     #[error("Serde error: {0}")]
     SerError(#[from] serde_json::Error),
 }
