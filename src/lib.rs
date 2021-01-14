@@ -83,3 +83,6 @@ pub type Rustls = hyper_rustls::HttpsConnector<hyper::client::HttpConnector>;
 /// Type alias for OpenSSL connector
 #[cfg(feature = "openssl-tls")]
 pub type OpenSSL = hyper_tls::HttpsConnector<hyper::client::HttpConnector>;
+
+#[cfg(feature = "progress")]
+pub use indicatif::ProgressStyle;

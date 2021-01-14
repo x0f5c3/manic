@@ -20,7 +20,8 @@ pub struct Downloader<C>
 where
     C: Connect + Clone + Send + Sync + Unpin + 'static,
 {
-    client: Client<C>,
+    /// Downloader hyper Client
+    pub client: Client<C>,
     hash: Option<Hash>,
     chunks: Chunks,
     workers: u8,
@@ -136,7 +137,7 @@ where
     }
     /// Get filename from the url, returns an error if the url contains no filename
     #[instrument(skip(self), fields(URL=%self.url))]
-    pub(crate) fn get_filename(&self) -> Result<String> {
+    pub fn get_filename(&self) -> Result<String> {
         self.url
             .path()
             .split('/')

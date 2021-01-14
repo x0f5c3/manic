@@ -38,6 +38,7 @@ pub enum Error {
     PartsError(#[from] http::uri::InvalidUriParts),
     #[cfg(feature = "json")]
     #[error("Serde error: {0}")]
+    /// Serde error
     SerError(#[from] serde_json::Error),
     #[error("UTF8 Error: {0}")]
     UTF8(#[from] FromUtf8Error),

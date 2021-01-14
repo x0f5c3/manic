@@ -5,155 +5,177 @@ use crate::Result;
 
 #[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
+/// GitHub API release
 pub struct Release {
-    pub url: String,
+    url: String,
     #[serde(rename = "assets_url")]
-    pub assets_url: String,
+    assets_url: String,
     #[serde(rename = "upload_url")]
-    pub upload_url: String,
+    upload_url: String,
     #[serde(rename = "html_url")]
-    pub html_url: String,
-    pub id: i64,
-    pub author: Author,
+    html_url: String,
+    id: i64,
+    author: Author,
     #[serde(rename = "node_id")]
-    pub node_id: String,
+    node_id: String,
     #[serde(rename = "tag_name")]
-    pub tag_name: String,
+<<<<<<< Updated upstream
+     tag_name: String,
     #[serde(rename = "target_commitish")]
-    pub target_commitish: String,
+     target_commitish: String,
     pub name: String,
-    pub draft: bool,
+     draft: bool,
     pub prerelease: bool,
+=======
+    tag_name: String,
+    #[serde(rename = "target_commitish")]
+    arget_commitish: String,
+    /// Release name
+    pub name: String,
+    draft: bool,
+    prerelease: bool,
+>>>>>>> Stashed changes
     #[serde(rename = "created_at")]
-    pub created_at: String,
+    created_at: String,
     #[serde(rename = "published_at")]
-    pub published_at: String,
+    published_at: String,
+    /// Release assets
     pub assets: Vec<Asset>,
     #[serde(rename = "tarball_url")]
+    /// Release tarball url
     pub tarball_url: String,
     #[serde(rename = "zipball_url")]
+    /// Release zipball url
     pub zipball_url: String,
-    pub body: String,
+    body: String,
 }
 
 #[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
-pub struct Author {
-    pub login: String,
-    pub id: i64,
+struct Author {
+    login: String,
+    id: i64,
     #[serde(rename = "node_id")]
-    pub node_id: String,
+    node_id: String,
     #[serde(rename = "avatar_url")]
-    pub avatar_url: String,
+    avatar_url: String,
     #[serde(rename = "gravatar_id")]
-    pub gravatar_id: String,
-    pub url: String,
+    gravatar_id: String,
+    url: String,
     #[serde(rename = "html_url")]
-    pub html_url: String,
+    html_url: String,
     #[serde(rename = "followers_url")]
-    pub followers_url: String,
+    followers_url: String,
     #[serde(rename = "following_url")]
-    pub following_url: String,
+    following_url: String,
     #[serde(rename = "gists_url")]
-    pub gists_url: String,
+    gists_url: String,
     #[serde(rename = "starred_url")]
-    pub starred_url: String,
+    starred_url: String,
     #[serde(rename = "subscriptions_url")]
-    pub subscriptions_url: String,
+    subscriptions_url: String,
     #[serde(rename = "organizations_url")]
-    pub organizations_url: String,
+    organizations_url: String,
     #[serde(rename = "repos_url")]
-    pub repos_url: String,
+    repos_url: String,
     #[serde(rename = "events_url")]
-    pub events_url: String,
+    events_url: String,
     #[serde(rename = "received_events_url")]
-    pub received_events_url: String,
+    received_events_url: String,
     #[serde(rename = "type")]
-    pub type_field: String,
+    type_field: String,
     #[serde(rename = "site_admin")]
-    pub site_admin: bool,
+    site_admin: bool,
 }
 
 #[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
+/// Github API release asset
 pub struct Asset {
+    /// Asset API url
     pub url: String,
-    pub id: i64,
+    id: i64,
     #[serde(rename = "node_id")]
-    pub node_id: String,
+    node_id: String,
+    /// Asset name
     pub name: String,
-    pub label: serde_json::Value,
-    pub uploader: Uploader,
+    label: serde_json::Value,
+    uploader: Uploader,
     #[serde(rename = "content_type")]
+    /// Asset content type
     pub content_type: String,
-    pub state: String,
+    state: String,
+    /// Asset size
     pub size: i64,
     #[serde(rename = "download_count")]
-    pub download_count: i64,
+    download_count: i64,
     #[serde(rename = "created_at")]
-    pub created_at: String,
+    created_at: String,
     #[serde(rename = "updated_at")]
-    pub updated_at: String,
+    updated_at: String,
     #[serde(rename = "browser_download_url")]
+    /// Release asset download URL
     pub browser_download_url: String,
 }
 
 #[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
-pub struct Uploader {
-    pub login: String,
-    pub id: i64,
+struct Uploader {
+    login: String,
+    id: i64,
     #[serde(rename = "node_id")]
-    pub node_id: String,
+    node_id: String,
     #[serde(rename = "avatar_url")]
-    pub avatar_url: String,
+    avatar_url: String,
     #[serde(rename = "gravatar_id")]
-    pub gravatar_id: String,
-    pub url: String,
+    gravatar_id: String,
+    url: String,
     #[serde(rename = "html_url")]
-    pub html_url: String,
+    html_url: String,
     #[serde(rename = "followers_url")]
-    pub followers_url: String,
+    followers_url: String,
     #[serde(rename = "following_url")]
-    pub following_url: String,
+    following_url: String,
     #[serde(rename = "gists_url")]
-    pub gists_url: String,
+    gists_url: String,
     #[serde(rename = "starred_url")]
-    pub starred_url: String,
+    starred_url: String,
     #[serde(rename = "subscriptions_url")]
-    pub subscriptions_url: String,
+    subscriptions_url: String,
     #[serde(rename = "organizations_url")]
-    pub organizations_url: String,
+    organizations_url: String,
     #[serde(rename = "repos_url")]
-    pub repos_url: String,
+    repos_url: String,
     #[serde(rename = "events_url")]
-    pub events_url: String,
+    events_url: String,
     #[serde(rename = "received_events_url")]
-    pub received_events_url: String,
+    received_events_url: String,
     #[serde(rename = "type")]
-    pub type_field: String,
+    type_field: String,
     #[serde(rename = "site_admin")]
-    pub site_admin: bool,
+    site_admin: bool,
 }
 
 #[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
+/// Github API tag
 pub struct Tag {
+    /// Tag name
     pub name: String,
     #[serde(rename = "zipball_url")]
-    pub zipball_url: String,
+    zipball_url: String,
     #[serde(rename = "tarball_url")]
-    pub tarball_url: String,
-    pub commit: Commit,
+    tarball_url: String,
+    commit: Commit,
     #[serde(rename = "node_id")]
-    pub node_id: String,
+    node_id: String,
 }
 
 #[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
-pub struct Commit {
-    pub sha: String,
-    pub url: String,
+struct Commit {
+    sha: String,
+    url: String,
 }
 
 impl Release {
