@@ -19,22 +19,13 @@ pub struct Release {
     #[serde(rename = "node_id")]
     node_id: String,
     #[serde(rename = "tag_name")]
-<<<<<<< Updated upstream
-     tag_name: String,
-    #[serde(rename = "target_commitish")]
-     target_commitish: String,
-    pub name: String,
-     draft: bool,
-    pub prerelease: bool,
-=======
     tag_name: String,
     #[serde(rename = "target_commitish")]
-    arget_commitish: String,
+    target_commitish: String,
     /// Release name
     pub name: String,
     draft: bool,
     prerelease: bool,
->>>>>>> Stashed changes
     #[serde(rename = "created_at")]
     created_at: String,
     #[serde(rename = "published_at")]
@@ -179,6 +170,9 @@ struct Commit {
 }
 
 impl Release {
+    /// Get latest release
+    ///
+    /// Using repo name in format "owner/repo"
     pub async fn latest<C>(repo: &str, client: crate::Client<C>) -> Result<Self>
     where
         C: Connect + Clone + Sync + Send + Unpin + 'static

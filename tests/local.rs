@@ -1,11 +1,11 @@
-#[cfg(any(
-    all(feature = "rustls-tls", not(feature = "openssl-tls")),
-    all(feature = "openssl-tls", not(feature = "rustls-tls"))
-))]
-use manic::Downloader;
+// #[cfg(any(
+//     all(feature = "rustls-tls", not(feature = "openssl-tls")),
+//     all(feature = "openssl-tls", not(feature = "rustls-tls"))
+// ))]
+// use manic::Downloader;
 
-#[cfg(all(feature = "rustls-tls", feature = "openssl-tls"))]
-type Downloader = manic::Downloader<manic::Rustls>;
+// #[cfg(all(feature = "rustls-tls", feature = "openssl-tls"))]
+// type Downloader = manic::Downloader<manic::Rustls>;
 
 // #[tokio::test]
 // async fn file_test() -> manic::Result<()> {

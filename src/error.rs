@@ -40,6 +40,7 @@ pub enum Error {
     #[error("Serde error: {0}")]
     /// Serde error
     SerError(#[from] serde_json::Error),
+    /// Failed converting to a String
     #[error("UTF8 Error: {0}")]
     UTF8(#[from] FromUtf8Error),
 }
