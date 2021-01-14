@@ -48,6 +48,22 @@
 #![allow(dead_code)]
 #![warn(missing_docs)]
 
+pub use client::{Client, ClientBuilder, Response};
+#[doc(inline)]
+pub use downloader::Downloader;
+#[doc(inline)]
+pub use error::Error;
+#[doc(inline)]
+pub use error::Result;
+#[doc(inline)]
+pub use traits::Connector;
+#[doc(inline)]
+pub use types::Hash;
+#[cfg(feature = "openssl-tls")]
+pub use types::OpenSslDl;
+#[cfg(feature = "rustls-tls")]
+pub use types::RustlsDl;
+
 pub(crate) mod chunk;
 /// This module is the main part of the crate
 pub mod downloader;
@@ -55,28 +71,11 @@ pub mod downloader;
 pub mod error;
 mod traits;
 mod types;
-#[doc(inline)]
-pub use error::Error;
-#[doc(inline)]
-pub use error::Result;
-#[doc(inline)]
-pub use traits::{Connector};
-#[doc(inline)]
-pub use types::Hash;
 /// Client
 pub mod client;
-pub use client::{Client, Response, ClientBuilder};
 #[cfg(feature = "github")]
 /// Interaction with github repos
 pub mod github;
-
-#[cfg(feature = "openssl-tls")]
-pub use types::OpenSslDl;
-#[cfg(feature = "rustls-tls")]
-pub use types::RustlsDl;
-
-#[doc(inline)]
-pub use downloader::Downloader;
 
 /// Type alias for Rustls connector
 #[cfg(feature = "rustls-tls")]

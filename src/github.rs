@@ -1,6 +1,7 @@
-use serde::{Deserialize, Serialize};
-use crate::Result;
 use hyper::client::connect::Connect;
+use serde::{Deserialize, Serialize};
+
+use crate::Result;
 
 #[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]

@@ -1,11 +1,12 @@
-use crate::Error;
-use crate::Result;
+use hyper::{Body, Request};
 use hyper::client::connect::Connect;
 use hyper::client::HttpConnector;
-use hyper::header::{LOCATION, CONTENT_LENGTH};
-use hyper::{Body, Request};
+use hyper::header::{CONTENT_LENGTH, LOCATION};
 #[cfg(feature = "json")]
 use serde::de::DeserializeOwned;
+
+use crate::Error;
+use crate::Result;
 
 #[macro_use]
 macro_rules! head {
@@ -24,8 +25,8 @@ macro_rules! head {
 /// Builder pattern for [`Client`][crate::Client]
 #[derive(Debug, Clone, Default)]
 pub struct ClientBuilder<C>
-where
-    C: Connect + Send + Sync + Clone,
+    where
+        C: Connect + Send + Sync + Clone,
 {
     redirects: bool,
     connector: C,
@@ -48,8 +49,8 @@ impl ClientBuilder<hyper_tls::HttpsConnector<HttpConnector>> {
 }
 
 impl<C> ClientBuilder<C>
-where
-    C: Connect + Send + Sync + Clone,
+    where
+        C: Connect + Send + Sync + Clone,
 {
     /// New ClientBuilder with hyper https Connector
     pub fn new(c: C) -> Self {
@@ -76,8 +77,8 @@ where
 /// Wrapper for [`hyper::Client`][hyper::Client]
 #[derive(Debug, Clone)]
 pub struct Client<C>
-where
-    C: Connect + Send + Sync + Clone,
+    where
+        C: Connect + Send + Sync + Clone,
 {
     client: hyper::Client<C>,
     redirects: bool,
@@ -110,8 +111,8 @@ impl Client<hyper_tls::HttpsConnector<HttpConnector>> {
 }
 
 impl<C> Client<C>
-where
-    C: Connect + Send + Sync + Clone + 'static + Unpin,
+    where
+        C: Connect + Send + Sync + Clone + 'static + Unpin,
 {
     /// Follow redirects
     pub fn follow_redirects(&mut self) {

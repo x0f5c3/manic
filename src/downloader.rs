@@ -1,16 +1,18 @@
-use crate::chunk::{self, Chunks};
-use crate::ClientBuilder;
-use crate::Hash;
-use crate::Result;
-use crate::{Connector, Error};
+use std::path::Path;
+
 use futures::Future;
 use hyper::client::connect::Connect;
-use crate::Client;
 use sha2::{Digest, Sha224, Sha256, Sha384, Sha512};
-use std::path::Path;
 use tokio::fs::File;
 use tokio::io::AsyncWriteExt;
 use tracing::{debug, instrument};
+
+use crate::{Connector, Error};
+use crate::chunk::{self, Chunks};
+use crate::Client;
+use crate::ClientBuilder;
+use crate::Hash;
+use crate::Result;
 
 /// Main type of the crate, use to download the file and optionally verify it
 #[derive(Debug)]
