@@ -1,6 +1,6 @@
 [package]
 name = "manic"
-version = "0.3.5"
+version = "0.3.6"
 authors = ["x0f5c3 <x0f5c3@tutanota.com>"]
 edition = "2018"
 description = "Fast and simple async downloads"
@@ -38,4 +38,4 @@ default-features = false
 features = ["rustls-tls"]
 
 [dev-dependencies]
-httpmock = "0.5.3"
+httpmock = "0.5.4"

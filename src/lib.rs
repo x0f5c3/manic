@@ -40,10 +40,12 @@ use tokio::io;
 /// This module is the main part of the crate
 pub mod downloader;
 /// Only available on feature `progress`
-#[cfg(any(feature = "progress"))]
+#[cfg(feature = "progress")]
 pub mod progress;
 pub mod chunk;
 
+#[cfg(feature = "progress")]
+pub use indicatif::ProgressStyle;
 /// Error definition for possible errors in this crate
 #[derive(Debug, Error)]
 pub enum Error {
