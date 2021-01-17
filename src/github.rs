@@ -173,12 +173,13 @@ impl Release {
     /// Get latest release
     ///
     /// Using repo name in format "owner/repo"
-    pub async fn latest<C>(repo: &str, client: crate::Client<C>) -> Result<Self>
+    pub async fn latest_assets<C>(repo: &str, client: crate::Client<C>) -> Result<Vec<Asset>>
     where
         C: Connect + Clone + Sync + Send + Unpin + 'static
     {
         let url = format!("https://api.github.com/repos/{}/releases/latest", repo);
-        client.get(&url).await?.json().await
+        let rel: Self = client.get(&url).await?.json().await?;
+        Ok(rel.assets)
 
     }
 }

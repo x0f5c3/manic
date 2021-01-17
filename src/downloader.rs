@@ -35,6 +35,10 @@ impl<C> Downloader<C>
 where
     C: Connector + Connect + Unpin + Clone + Send + Sync + 'static,
 {
+    pub async fn new_from_asset(workers: u8, asset: crate::github::Asset) -> Result<Self> {
+        let url = asset.browser_download_url;
+        Self::new(&url, workers).await
+    }
     /// Create a new downloader
     ///
     /// # Arguments
