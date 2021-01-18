@@ -33,9 +33,6 @@
 //!
 //!
 
-use std::num::ParseIntError;
-use thiserror::Error;
-use tokio::io;
 
 /// This module is the main part of the crate
 pub mod downloader;
@@ -43,34 +40,10 @@ pub mod downloader;
 #[cfg(feature = "progress")]
 pub mod progress;
 pub mod chunk;
+mod hash;
+mod error;
+pub use error::{Error, Result};
+pub use hash::Hash;
 
 #[cfg(feature = "progress")]
 pub use indicatif::ProgressStyle;
-/// Error definition for possible errors in this crate
-#[derive(Debug, Error)]
-pub enum Error {
-    /// Returned when the content length couldn't be parsed
-    #[error("Failed to parse content-length")]
-    LenParse(#[from] ParseIntError),
-    /// Represents problems with Tokio based IO
-    #[error("Tokio IO error: {0}")]
-    TokioIOError(#[from] io::Error),
-    /// Represents problems with network connectivity
-    #[error("Reqwest error: {0}")]
-    NetError(#[from] reqwest::Error),
-    /// Returned when the header can't be parsed to a String
-    #[error(transparent)]
-    ToStr(#[from] reqwest::header::ToStrError),
-    /// Returned when there's no filename in the url
-    #[error("No filename in url")]
-    NoFilename(String),
-    /// Returned when the url couldn't be parsed
-    #[error("Failed to parse URL")]
-    UrlParseError(#[from] url::ParseError),
-    /// Returned when the SHA256 sum didn't match
-    #[error("Checksum doesn't match")]
-    SHA256MisMatch(String),
-    /// Returned when the selected chunk size == 0
-    #[error("Invalid chunk size")]
-    BadChunkSize,
-}

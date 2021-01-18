@@ -4,7 +4,7 @@ use reqwest::Client;
 use tracing::instrument;
 
 /// Iterator over remote file chunks that returns a formatted [`RANGE`][reqwest::header::RANGE] header value
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 pub struct ChunkIter {
     low: u64,
     hi: u64,
@@ -53,3 +53,4 @@ pub async fn download(val: String, url: &str, client: &Client) -> Result<Vec<u8>
         .await?;
     Ok(resp.as_ref().to_vec())
 }
+
