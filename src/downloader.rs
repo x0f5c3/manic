@@ -46,7 +46,7 @@ impl Downloader {
         let parsed = reqwest::Url::parse(url)?;
         let length = content_length(&client, url).await?;
         debug!("Length: {}", length);
-        if length <= 0 {
+        if length == 0 {
             return Err(Error::NoLen);
         }
         let chunks = Chunks::new(0, length - 1, length / workers as u64)?;
@@ -137,7 +137,7 @@ impl Downloader {
                 }
                 res.append(&mut chunk.to_vec());
             }
-            return Ok(res);
+            Ok(res)
         }
     }
     /// Download the file
