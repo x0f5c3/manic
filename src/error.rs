@@ -1,6 +1,6 @@
+use std::num::ParseIntError;
 use thiserror::Error;
 use tokio::io;
-use std::num::ParseIntError;
 
 /// Error definition for possible errors in this crate
 #[derive(Debug, Error)]
@@ -32,6 +32,5 @@ pub enum Error {
     /// Returned when the selected chunk size == 0
     #[error("Invalid chunk size")]
     BadChunkSize,
-
 }
 pub type Result<T> = std::result::Result<T, Error>;

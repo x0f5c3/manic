@@ -20,9 +20,7 @@
 //! # Example
 //!
 //! ```no_run
-//!
 //! use manic::Downloader;
-//!
 //! #[tokio::main]
 //! async fn main() -> Result<(), manic::Error> {
 //!     let number_of_concurrent_tasks: u8 = 5;
@@ -31,13 +29,13 @@
 //!     Ok(())
 //! }
 //! ```
-//!
-//!
 
 mod chunk;
 mod downloader;
 mod error;
 mod hash;
+
+
 pub use downloader::Downloader;
 pub use error::{Error, Result};
 pub use hash::Hash;

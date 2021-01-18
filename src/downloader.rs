@@ -2,7 +2,7 @@ use crate::chunk::Chunks;
 use crate::Error;
 use crate::Hash;
 use crate::Result;
-use reqwest::header::{RANGE, CONTENT_LENGTH};
+use reqwest::header::{CONTENT_LENGTH, RANGE};
 use reqwest::Client;
 use std::path::Path;
 use tokio::fs::File;
@@ -102,11 +102,13 @@ impl Downloader {
             })
             .ok_or_else(|| Error::NoFilename(url.to_string()))
     }
+    /// Enable progress reporting
     #[cfg(feature = "progress")]
     pub fn progress_bar(&mut self) -> &mut Self {
         self.pb = Some(indicatif::ProgressBar::new(self.length));
         self
     }
+    /// Set the progress bar style
     #[cfg(feature = "progress")]
     pub fn bar_style(&self, style: indicatif::ProgressStyle) {
         if let Some(pb) = &self.pb {
@@ -245,5 +247,8 @@ impl Downloader {
 
 async fn content_length(client: &Client, url: &str) -> Result<u64> {
     let resp = client.head(url).send().await?;
-    resp.headers()[CONTENT_LENGTH].to_str()?.parse::<u64>().map_err(Into::into)
+    resp.headers()[CONTENT_LENGTH]
+        .to_str()?
+        .parse::<u64>()
+        .map_err(Into::into)
 }
