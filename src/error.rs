@@ -1,6 +1,6 @@
-use std::num::ParseIntError;
 use thiserror::Error;
 use tokio::io;
+use std::num::ParseIntError;
 
 /// Error definition for possible errors in this crate
 #[derive(Debug, Error)]
@@ -8,6 +8,9 @@ pub enum Error {
     /// Returned when the content length couldn't be parsed
     #[error("Failed to parse content-length")]
     LenParse(#[from] ParseIntError),
+    /// Returned when the content-length = 0
+    #[error("Failed to retrieve content-length")]
+    NoLen,
     /// Represents problems with Tokio based IO
     #[error("Tokio IO error: {0}")]
     TokioIOError(#[from] io::Error),
@@ -29,5 +32,6 @@ pub enum Error {
     /// Returned when the selected chunk size == 0
     #[error("Invalid chunk size")]
     BadChunkSize,
+
 }
- pub type Result<T> = std::result::Result<T, Error>;
+pub type Result<T> = std::result::Result<T, Error>;

@@ -13,8 +13,24 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="0796e902-4bbc-4b85-8fb7-87c4bd648cec" name="Default Changelist" comment="">
+      <change afterPath="$PROJECT_DIR$/.gtm/1610941977.event" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/.gtm/1610942005.event" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/.gtm/1610942027.event" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/.gtm/1610942034.event" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/.gtm/1610942072.event" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/tests/lib.rs" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/tests/remote.rs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/manic.iml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/manic.iml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/Cargo.toml" beforeDir="false" afterPath="$PROJECT_DIR$/Cargo.toml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/chunk.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/chunk.rs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/downloader.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/downloader.rs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/error.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/error.rs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/hash.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/hash.rs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/lib.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/lib.rs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/progress/chunk.rs" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/progress/downloader.rs" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/progress/mod.rs" beforeDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -108,6 +124,11 @@
         <option name="CARGO.BUILD_TASK_PROVIDER" enabled="true" />
       </method>
     </configuration>
+    <configuration default="true" type="GradleAppRunConfiguration" factoryName="Application" REDIRECT_INPUT="false" ELEVATE="false" PASS_PARENT_ENVS_2="true">
+      <method v="2">
+        <option name="com.jetbrains.cidr.cpp.gradle.execution.GradleNativeBuildBeforeRunTaskProvider$BuildBeforeRunTask" enabled="true" />
+      </method>
+    </configuration>
     <recent_temporary>
       <list>
         <item itemvalue="Cargo.build" />
@@ -161,6 +182,7 @@
       <workItem from="1610197583886" duration="82000" />
       <workItem from="1610197675907" duration="53000" />
       <workItem from="1610197760475" duration="1830000" />
+      <workItem from="1610941884002" duration="2889000" />
     </task>
     <task id="LOCAL-00001" summary="Changed to hyper and tokio 1.0">
       <created>1609704885689</created>

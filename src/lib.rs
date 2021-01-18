@@ -11,6 +11,8 @@
 //! ## Feature flags
 //!
 //! - `progress`: Enables progress reporting using `indicatif`
+//! - `rustls-tls`: Use rustls for Https connections, enabled by default
+//! - `native-tls`: Use native tls for Https connections
 //!
 //!
 //! ## Crate usage
@@ -19,31 +21,27 @@
 //!
 //! ```no_run
 //!
-//! use manic::downloader;
-//! use reqwest::Client;
+//! use manic::Downloader;
 //!
 //! #[tokio::main]
 //! async fn main() -> Result<(), manic::Error> {
-//!     let client = Client::new();
 //!     let number_of_concurrent_tasks: u8 = 5;
-//!     let result = downloader::download(&client, "https://crates.io", number_of_concurrent_tasks).await?;
+//!     let client = Downloader::new("https://crates.io", number_of_concurrent_tasks).await?;
+//!     let result = client.download().await?;
 //!     Ok(())
 //! }
 //! ```
 //!
 //!
 
-
-/// This module is the main part of the crate
-pub mod downloader;
-/// Only available on feature `progress`
-#[cfg(feature = "progress")]
-pub mod progress;
-pub mod chunk;
-mod hash;
+mod chunk;
+mod downloader;
 mod error;
+mod hash;
+pub use downloader::Downloader;
 pub use error::{Error, Result};
 pub use hash::Hash;
-
 #[cfg(feature = "progress")]
 pub use indicatif::ProgressStyle;
+pub use reqwest::Client;
+pub use reqwest::Url;

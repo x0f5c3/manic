@@ -1,8 +1,8 @@
+use crate::{Error, Result};
+use sha2::Digest;
+use sha2::{Sha224, Sha256, Sha384, Sha512};
 use std::fmt;
 use tracing::debug;
-use crate::{Error, Result};
-use sha2::{Sha224, Sha256, Sha384, Sha512};
-use sha2::Digest;
 
 /// Available checksum types
 #[derive(Debug, Clone)]

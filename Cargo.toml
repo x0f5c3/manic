@@ -1,6 +1,6 @@
 [package]
 name = "manic"
-version = "0.3.6"
+version = "0.5.0"
 authors = ["x0f5c3 <x0f5c3@tutanota.com>"]
 edition = "2018"
 description = "Fast and simple async downloads"
@@ -19,8 +19,10 @@ targets = ["x86_64-apple-darwin", "x86_64-pc-windows-msvc", "x86_64-pc-windows-g
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 [features]
-default = []
+default = ["rustls-tls"]
 progress = ["indicatif"]
+rustls-tls = ["reqwest/rustls-tls"]
+native-tls = ["reqwest/native-tls"]
 
 [dependencies]
 tokio = { version = "^1.0", features = ["fs", "rt-multi-thread", "macros"] }
@@ -38,4 +40,4 @@ default-features = false
 features = ["rustls-tls"]
 
 [dev-dependencies]
-httpmock = "0.5.4"
+pretty_env_logger = "*"
