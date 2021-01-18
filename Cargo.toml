@@ -37,7 +37,7 @@ tracing-futures = "0.2.4"
 [dependencies.reqwest]
 version = "0.11.0"
 default-features = false
-features = ["rustls-tls"]
+features = ["stream", "gzip", "json", "multipart"]
 
 [dev-dependencies]
 pretty_env_logger = "*"

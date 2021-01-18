@@ -2,7 +2,7 @@ use crate::chunk::Chunks;
 use crate::Error;
 use crate::Hash;
 use crate::Result;
-use reqwest::header::{CONTENT_LENGTH, RANGE};
+use reqwest::header::{RANGE, HeaderMap, USER_AGENT};
 use reqwest::Client;
 use std::path::Path;
 use tokio::fs::File;
@@ -42,7 +42,9 @@ impl Downloader {
     /// # }
     /// ```
     pub async fn new(url: &str, workers: u8) -> Result<Self> {
-        let client = Client::new();
+        let mut default_header = HeaderMap::new();
+        default_header.insert(USER_AGENT, "Manic Downloader".parse().unwrap());
+        let client = Client::builder().default_headers(default_header).build()?;
         let parsed = reqwest::Url::parse(url)?;
         let length = content_length(&client, url).await?;
         debug!("Length: {}", length);
@@ -247,8 +249,7 @@ impl Downloader {
 
 async fn content_length(client: &Client, url: &str) -> Result<u64> {
     let resp = client.head(url).send().await?;
-    resp.headers()[CONTENT_LENGTH]
-        .to_str()?
-        .parse::<u64>()
-        .map_err(Into::into)
+    debug!("Response code: {}", resp.status());
+    debug!("Received HEAD response: {:?}", resp.headers());
+    resp.content_length().ok_or(Error::NoLen)
 }
