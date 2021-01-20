@@ -2,7 +2,7 @@ use crate::chunk::Chunks;
 use crate::Error;
 use crate::Hash;
 use crate::Result;
-use reqwest::header::{RANGE, HeaderMap, USER_AGENT};
+use reqwest::header::RANGE;
 use reqwest::Client;
 use std::path::Path;
 use tokio::fs::File;
@@ -23,31 +23,8 @@ pub struct Downloader {
 }
 
 impl Downloader {
-    /// Create a new downloader
-    ///
-    /// # Arguments
-    /// * `url` - URL of the file
-    /// * `workers` - amount of concurrent tasks
-    ///
-    /// # Examples
-    ///
-    /// ```no_run
-    /// use manic::Downloader;
-    /// # #[tokio::main]
-    /// # async fn main() -> Result<(), manic::Error> {
-    ///     // If only one TLS feature is enabled
-    ///     let downloader = Downloader::new("https://crates.io", 5).await?;
-    ///
-    /// # Ok(())
-    /// # }
-    /// ```
-    pub async fn new(url: &str, workers: u8) -> Result<Self> {
-        let mut default_header = HeaderMap::new();
-        default_header.insert(USER_AGENT, "Manic Downloader".parse().unwrap());
-        let client = Client::builder().default_headers(default_header).build()?;
+    async fn assemble_downloader(url: &str, workers: u8, length: u64, client: Client) -> Result<Self> {
         let parsed = reqwest::Url::parse(url)?;
-        let length = content_length(&client, url).await?;
-        debug!("Length: {}", length);
         if length == 0 {
             return Err(Error::NoLen);
         }
@@ -74,6 +51,33 @@ impl Downloader {
             chunks,
             pb: None,
         });
+    }
+    pub async fn new_manual(url: &str, workers: u8, length: u64) -> Result<Self> {
+        let client = Client::new();
+        Self::assemble_downloader(url, workers, length, client).await
+    }
+    /// Create a new downloader
+    ///
+    /// # Arguments
+    /// * `url` - URL of the file
+    /// * `workers` - amount of concurrent tasks
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// use manic::Downloader;
+    /// # #[tokio::main]
+    /// # async fn main() -> Result<(), manic::Error> {
+    ///     // If only one TLS feature is enabled
+    ///     let downloader = Downloader::new("https://crates.io", 5).await?;
+    ///
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub async fn new(url: &str, workers: u8) -> Result<Self> {
+        let client = Client::new();
+        let length = content_length(&client, url).await?;
+        Self::assemble_downloader(url, workers, length, client).await
     }
     /// Get filename from the url, returns an error if the url contains no filename
     ///

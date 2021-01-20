@@ -12,9 +12,7 @@
     <cargoProject FILE="$PROJECT_DIR$/Cargo.toml" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="0796e902-4bbc-4b85-8fb7-87c4bd648cec" name="Default Changelist" comment="">
-      <change beforePath="$PROJECT_DIR$/Cargo.toml" beforeDir="false" afterPath="$PROJECT_DIR$/Cargo.toml" afterDir="false" />
-    </list>
+    <list default="true" id="0796e902-4bbc-4b85-8fb7-87c4bd648cec" name="Default Changelist" comment="" />
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
@@ -24,7 +22,7 @@
     <option name="formatViaClangd" value="false" />
   </component>
   <component name="DarkyenusTimeTracker">
-    <option name="totalTimeSeconds" value="2410" />
+    <option name="totalTimeSeconds" value="2481" />
     <option name="gitIntegration" value="true" />
     <option name="naggedAbout" value="1" />
   </component>
@@ -174,7 +172,7 @@
       <workItem from="1610197675907" duration="53000" />
       <workItem from="1610197760475" duration="1830000" />
       <workItem from="1610941884002" duration="2961000" />
-      <workItem from="1610944854623" duration="2910000" />
+      <workItem from="1610944854623" duration="2980000" />
     </task>
     <task id="LOCAL-00001" summary="Changed to hyper and tokio 1.0">
       <created>1609704885689</created>
