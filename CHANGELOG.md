@@ -1,4 +1,7 @@
-# v0.3.6 (2021-1-17)
+# v0.5.5 (2021-1-20)
+- [Added] option to assemble downloader manually for cases when the server doesn't allow head requests
+
+# v0.5.0 (2021-1-17)
 - [Added] ProgressStyle to remove the need to add indicatif to dependencies
 
 # v0.3.5 (2021-1-9)
