@@ -1,6 +1,6 @@
 [package]
 name = "manic"
-version = "0.5.2"
+version = "0.5.5"
 authors = ["x0f5c3 <x0f5c3@tutanota.com>"]
 edition = "2018"
 description = "Fast and simple async downloads"
@@ -21,6 +21,7 @@ targets = ["x86_64-apple-darwin", "x86_64-pc-windows-msvc", "x86_64-pc-windows-g
 [features]
 default = []
 progress = ["indicatif"]
+json = ["reqwest/json"]
 
 [dependencies]
 tokio = { version = "^1.0", features = ["fs", "rt-multi-thread", "macros"] }

@@ -1,4 +1,7 @@
-# v0.5.5 (2021-1-20)
+# v0.5.5 (2021-1-21)
+- [Added] optional support for reqwest json
+
+# v0.5.2 (2021-1-20)
 - [Added] option to assemble downloader manually for cases when the server doesn't allow head requests
 
 # v0.5.0 (2021-1-17)
