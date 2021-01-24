@@ -1,7 +1,7 @@
-use hyper::client::connect::Connect;
 use serde::{Deserialize, Serialize};
 
 use crate::Result;
+use crate::Client;
 
 #[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -173,10 +173,7 @@ impl Release {
     /// Get latest release
     ///
     /// Using repo name in format "owner/repo"
-    pub async fn latest_assets<C>(repo: &str, client: crate::Client<C>) -> Result<Vec<Asset>>
-    where
-        C: Connect + Clone + Sync + Send + Unpin + 'static
-    {
+    pub async fn latest_assets(repo: &str, client: Client) -> Result<Vec<Asset>> {
         let url = format!("https://api.github.com/repos/{}/releases/latest", repo);
         let rel: Self = client.get(&url).await?.json().await?;
         Ok(rel.assets)

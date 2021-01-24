@@ -43,6 +43,9 @@ pub enum Error {
     /// Failed converting to a String
     #[error("UTF8 Error: {0}")]
     UTF8(#[from] FromUtf8Error),
+    /// Missing content-length header
+    #[error("No content-length")]
+    NoLen,
 }
 
 /// Alias for Result<T, manic::Error>
