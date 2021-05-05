@@ -11,8 +11,7 @@
 //! ## Feature flags
 //!
 //! - `progress`: Enables progress reporting using `indicatif`
-//! - `rustls-tls`: Use rustls for Https connections, enabled by default
-//! - `native-tls`: Use native tls for Https connections
+//! - `json`: Enables use of JSON features on the reqwest [`Client`][reqwest::Client]
 //!
 //!
 //! ## Crate usage

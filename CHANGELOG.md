@@ -1,3 +1,6 @@
+# v0.6.1 (2021-5-5)
+- [Fixed] documentation
+
 # v0.6.0 (2021-5-5)
 - [Removed] unused code
 - [Updated] dependencies

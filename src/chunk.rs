@@ -38,15 +38,3 @@ impl Iterator for Chunks {
         }
     }
 }
-
-// #[instrument(skip(client))]
-// pub async fn download(val: String, url: &str, client: &Client) -> Result<Vec<u8>, Error> {
-//     let resp = client
-//         .get(url)
-//         .header(RANGE, val)
-//         .send()
-//         .await?
-//         .bytes()
-//         .await?;
-//     Ok(resp.as_ref().to_vec())
-// }

@@ -19,6 +19,7 @@ This crate is a work in progress
 ### Feature flags
 
 - `progress`: Enables progress reporting using indicatif
+- `json`: Enables use of JSON features on the reqwest Client
 
 
 ### Crate usage
