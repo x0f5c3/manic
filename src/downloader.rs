@@ -23,6 +23,15 @@ pub struct Downloader {
 }
 
 impl Downloader {
+    pub fn get_client(&self) -> &Client {
+        &self.client
+    }
+    pub fn get_url(&self) -> String {
+        self.url.to_string()
+    }
+    pub fn filename(&self) -> &str {
+        &self.filename
+    }
     async fn assemble_downloader(url: &str, workers: u8, length: u64, client: Client) -> Result<Self> {
         let parsed = reqwest::Url::parse(url)?;
         if length == 0 {

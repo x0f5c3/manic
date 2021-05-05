@@ -1,3 +1,6 @@
+# v0.6.2 (2021-5-5)
+- [Added] getters for Downloader
+
 # v0.6.1 (2021-5-5)
 - [Fixed] documentation
 
