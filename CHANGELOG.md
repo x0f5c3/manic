@@ -1,3 +1,7 @@
+# v0.6.0 (2021-5-5)
+- [Removed] unused code
+- [Updated] dependencies
+
 # v0.5.5 (2021-1-21)
 - [Added] optional support for reqwest json
 

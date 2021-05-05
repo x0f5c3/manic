@@ -1,7 +1,4 @@
 use crate::Error;
-use reqwest::header::RANGE;
-use reqwest::Client;
-use tracing::instrument;
 
 /// Iterator over remote file chunks that returns a formatted [`RANGE`][reqwest::header::RANGE] header value
 #[derive(Debug, Clone, Copy)]
@@ -42,14 +39,14 @@ impl Iterator for Chunks {
     }
 }
 
-#[instrument(skip(client))]
-pub async fn download(val: String, url: &str, client: &Client) -> Result<Vec<u8>, Error> {
-    let resp = client
-        .get(url)
-        .header(RANGE, val)
-        .send()
-        .await?
-        .bytes()
-        .await?;
-    Ok(resp.as_ref().to_vec())
-}
+// #[instrument(skip(client))]
+// pub async fn download(val: String, url: &str, client: &Client) -> Result<Vec<u8>, Error> {
+//     let resp = client
+//         .get(url)
+//         .header(RANGE, val)
+//         .send()
+//         .await?
+//         .bytes()
+//         .await?;
+//     Ok(resp.as_ref().to_vec())
+// }
