@@ -264,5 +264,12 @@ async fn content_length(client: &Client, url: &str) -> Result<u64> {
     let resp = client.head(url).send().await?;
     debug!("Response code: {}", resp.status());
     debug!("Received HEAD response: {:?}", resp.headers());
-    resp.content_length().ok_or(Error::NoLen)
+    let heads = resp.headers();
+    let len = heads.get("content-length").ok_or(Error::NoLen);
+    if len.is_ok() {
+        let raw = len.unwrap();
+        raw.to_str().map_err(|_x| Error::NoLen)?.parse::<u64>().map_err(|_x| Error::NoLen)
+    } else {
+        Err(len.unwrap_err())
+    }
 }
