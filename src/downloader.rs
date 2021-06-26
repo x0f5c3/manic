@@ -1,8 +1,6 @@
 #[cfg(feature = "github")]
 use crate::github::Asset;
 use crate::Client;
-use crate::Error;
-use crate::Hash;
 use crate::Result;
 use reqwest::header::{HeaderMap, USER_AGENT};
 use tracing::instrument;
@@ -13,8 +11,6 @@ use crate::file::File;
 use indicatif::MultiProgress;
 use std::path::Path;
 use indicatif::ProgressBar;
-use futures::StreamExt;
-use std::future::Future;
 
 
 #[derive(Debug)]
@@ -36,15 +32,14 @@ impl Downloader {
         let mut heads = HeaderMap::new();
         heads.insert(USER_AGENT, "Manic_DL".parse()?);
         let client = Client::builder().default_headers(heads).build()?;
-        let file = File::init(&url, len, workers)?;
+        let file = vec!(File::init(&url, len, workers)?);
         Self::assemble_downloader(file, client)
     }
 
     fn assemble_downloader(
-        file: File,
+        files: Vec<File>,
         client: Client,
     ) -> Result<Self> {
-        let files = vec!(file);
         return Ok(Self {
             client,
             files,
@@ -56,9 +51,9 @@ impl Downloader {
     }
 
     /// Assemble the downloader manually in case the server doesn't allow head requests
-    pub fn new_manual(url: &str, workers: u8, length: u64) -> Result<Self> {
+    pub fn new_manual(url: Vec<&str>, workers: u8, length: u64) -> Result<Self> {
         let client = Client::new();
-        let file = File::init(url, length, workers)?;
+        let file = url.iter().filter_map(|x| File::init(x, length, workers).ok()).collect::<Vec<File>>();
         Self::assemble_downloader(file, client)
     }
 
@@ -75,16 +70,19 @@ impl Downloader {
     /// # #[tokio::main]
     /// # async fn main() -> Result<(), manic::Error> {
     ///     // If only one TLS feature is enabled
-    ///     let downloader = Downloader::new("https://crates.io", 5).await?;
+    ///     let downloader = Downloader::new(vec!("https://crates.io"), 5).await?;
     ///
     /// # Ok(())
     /// # }
     /// ```
     #[instrument]
-    pub async fn new(url: &str, workers: u8) -> Result<Self> {
+    pub async fn new(url: Vec<&str>, workers: u8) -> Result<Self> {
         let client = Client::new();
-        let file = File::new(url, workers, &client).await?;
-        Self::assemble_downloader(file, client)
+        let mut files: Vec<File> = Vec::new();
+        for x in url {
+            files.push(File::new(x, workers, &client).await?);
+        }
+        Self::assemble_downloader(files, client)
     }
     #[instrument]
     pub async fn add_to_queue(&mut self, url: &str, workers: u8) -> Result<()> {
@@ -92,36 +90,6 @@ impl Downloader {
         self.files.push(file);
         Ok(())
     }
-    /// Get filename from the url, returns an error if the url contains no filename
-    ///
-    /// # Arguments
-    ///
-    /// * `url` - &str with the url
-    ///
-    /// # Example
-    /// ```
-    /// use manic::Downloader;
-    /// use manic::Error;
-    /// # fn main() -> Result<(), Error> {
-    ///     let name = Downloader::get_filename("http://test.rs/test.zip")?;
-    ///     assert_eq!("test.zip", name);
-    /// # Ok(())
-    /// # }
-    /// ```
-    pub fn get_filename(url: &str) -> Result<String> {
-        let parsed = reqwest::Url::parse(url)?;
-        parsed.path_segments()
-            .and_then(|segments| segments.last())
-            .and_then(|name| {
-                if name.is_empty() {
-                    None
-                } else {
-                    Some(name.to_string())
-                }
-            })
-            .ok_or_else(|| Error::NoFilename(url.to_string()))
-    }
-
     /// Enable progress reporting
     #[cfg(feature = "progress")]
     pub fn progress_bar(&mut self) {
@@ -155,15 +123,15 @@ impl Downloader {
     /// use manic::Error;
     /// # #[tokio::main]
     /// # async fn main() -> Result<(), Error> {
-    /// let client = Downloader::new("https://crates.io", 5).await?;
+    /// let client = Downloader::new(vec!("https://crates.io"), 5).await?;
     /// let result = client.download().await?;
     /// # Ok(())
     /// # }
     /// ```
     #[instrument(skip(self))]
-    pub async fn download(mut self) -> Result<Vec<Option<Vec<u8>>>> {
+    pub async fn download(&self) -> Result<Vec<Option<Vec<u8>>>> {
         let mut fut_vec = Vec::new();
-        for f in self.files {
+        for f in &self.files {
             fut_vec.push(f.download(&self.client).await?);
         }
         Ok(fut_vec)

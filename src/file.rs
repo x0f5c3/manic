@@ -2,22 +2,19 @@
 use indicatif::ProgressBar;
 use tracing::debug;
 
-use crate::{Client, Url};
-use crate::{Error, Hash};
 use crate::chunk::Chunks;
 use crate::Result;
-use tracing::instrument;
+use crate::{Client, Url};
+use crate::{Error, Hash};
 use reqwest::header::RANGE;
-use tokio::fs;
-use tokio::io::AsyncWriteExt;
 use std::convert::AsRef;
 use std::path::{Path, PathBuf};
-
+use tokio::fs;
+use tokio::io::AsyncWriteExt;
+use tracing::instrument;
 
 #[derive(Debug, Clone)]
-pub enum WriteType
-where
-{
+pub enum WriteType {
     File(PathBuf),
     Mem,
 }
@@ -34,7 +31,6 @@ pub struct File {
     #[cfg(feature = "progress")]
     pub bar: Option<ProgressBar>,
 }
-
 
 impl File {
     pub async fn new(url: &str, workers: u8, client: &Client) -> Result<Self> {
@@ -56,14 +52,15 @@ impl File {
             bar: None,
         })
     }
-    pub fn save_to_file(&mut self, path: impl AsRef<Path>){
-        let mut file = path.as_ref().to_path_buf().join(Path::new(&self.filename));
-        self.writer = WriteType::File{ 0: file};
+    pub fn save_to_file(&mut self, path: impl AsRef<Path>) {
+        let file = path.as_ref().to_path_buf().join(Path::new(&self.filename));
+        self.writer = WriteType::File { 0: file };
     }
 
     pub fn get_filename(url: &str) -> Result<String> {
         let parsed = Url::parse(url)?;
-        parsed.path_segments()
+        parsed
+            .path_segments()
             .and_then(|segments| segments.last())
             .and_then(|name| {
                 if name.is_empty() {
@@ -100,11 +97,7 @@ impl File {
 
     #[instrument(skip(self, client))]
     pub async fn download_chunk(&self, val: String, client: &Client) -> Result<Vec<u8>> {
-        let mut resp = client
-            .get(&self.url)
-            .header(RANGE, val)
-            .send()
-            .await?;
+        let mut resp = client.get(&self.url).header(RANGE, val).send().await?;
         {
             let mut res = Vec::new();
             while let Some(chunk) = resp.chunk().await? {
@@ -118,20 +111,6 @@ impl File {
         }
     }
 
-    /// Download the file
-    ///
-    /// # Example
-    ///
-    /// ```no_run
-    /// use manic::Downloader;
-    /// use manic::Error;
-    /// # #[tokio::main]
-    /// # async fn main() -> Result<(), Error> {
-    /// let client = Downloader::new("https://crates.io", 5).await?;
-    /// let result = client.download().await?;
-    /// # Ok(())
-    /// # }
-    /// ```
     #[instrument(skip(self), fields(URL=%self.url, tasks=%self.workers))]
     async fn download_inner(&self, client: &Client) -> Result<Vec<u8>> {
         let mb = self.get_length() / 1000000;
@@ -152,21 +131,6 @@ impl File {
 
         Ok(result)
     }
-
-    /// Download and verify the file
-    ///
-    /// # Example
-    ///
-    /// ```no_run
-    /// use manic::Downloader;
-    /// use manic::Error;
-    /// # #[tokio::main]
-    /// # async fn main() -> Result<(), Error> {
-    /// let client = Downloader::new("https://crates.io", 5).await?;
-    /// let result = client.download_and_verify().await?;
-    /// # Ok(())
-    /// # }
-    /// ```
     #[instrument(skip(self))]
     async fn download_and_verify(&self, client: &Client) -> Result<Vec<u8>> {
         let data = self.download_inner(client).await?;
@@ -188,14 +152,16 @@ impl File {
     /// # Example
     ///
     /// ```no_run
-    /// use manic::Downloader;
+    /// use manic::File;
     /// use manic::Error;
     /// use manic::Hash;
+    /// use reqwest::Client;
     /// #[tokio::main]
     /// async fn main() -> Result<(), Error> {
     ///     let hash = Hash::SHA256("039058c6f2c0cb492c533b0a4d14ef77cc0f78abccced5287d84a1a2011cfb81".to_string());
-    ///     let client = Downloader::new("https://crates.io", 5).await?.verify(hash);
-    ///     client.download_and_save("~/Downloads", true).await?;
+    ///     let req = Client::new();
+    ///     let client = File::new("https://crates.io", 5, &req).await?.verify(hash);
+    ///     client.download(&req).await?;
     ///     Ok(())
     ///  }
     /// ```
@@ -209,10 +175,8 @@ impl File {
                 file.write_all(data.as_slice()).await?;
                 file.sync_all().await?;
                 file.flush().await?;
-            },
-            WriteType::Mem => {
-                return Ok(Some(data))
-            },
+            }
+            WriteType::Mem => return Ok(Some(data)),
         }
         Ok(None)
     }
