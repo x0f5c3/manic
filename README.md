@@ -16,26 +16,24 @@ This crate is a work in progress
 
 
 
-### Feature flags
+## Feature flags
 
 - `progress`: Enables progress reporting using indicatif
+- `json`: Enables the json feature for reqwest
 
 
-### Crate usage
+## Crate usage
 
-## Examples
-
-
+### Examples
 
 ```rust
-use manic::downloader;
-use reqwest::Client;
+use manic::Downloader;
 
 #[tokio::main]
 async fn main() -> Result<(), manic::Error> {
-    let client = Client::new();
     let number_of_concurrent_tasks: u8 = 5;
-    let result = downloader::download(&client, "https://crates.io", number_of_concurrent_tasks).await?;
+    let dl = Downloader::new("https://crates.io", number_of_concurrent_tasks).await?;
+    let result = dl.download().await?;
     Ok(())
 }
 ```

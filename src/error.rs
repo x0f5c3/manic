@@ -32,5 +32,8 @@ pub enum Error {
     /// Returned when the selected chunk size == 0
     #[error("Invalid chunk size")]
     BadChunkSize,
+    /// Returned when the string couldn't be parsed to a [`HeaderValue`][reqwest::header::HeaderValue]
+    #[error("Invalid header value: {0}")]
+    HeaderVal(#[from] reqwest::header::InvalidHeaderValue),
 }
 pub type Result<T> = std::result::Result<T, Error>;

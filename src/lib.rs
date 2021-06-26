@@ -33,8 +33,10 @@
 mod chunk;
 mod downloader;
 mod error;
+#[cfg(feature = "github")]
+mod github;
 mod hash;
-
+mod file;
 
 pub use downloader::Downloader;
 pub use error::{Error, Result};
