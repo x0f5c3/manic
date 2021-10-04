@@ -104,7 +104,7 @@ impl Downloader {
     /// use manic::Downloader;
     /// use manic::Error;
     /// # fn main() -> Result<(), Error> {
-    ///     let url = manic::Url::parse("http://test.rs/test.zip")?;
+    ///     let url = manic::Url::parse("https://test.rs/test.zip")?;
     ///     let name = Downloader::get_filename(&url)?;
     ///     assert_eq!("test.zip", name);
     /// # Ok(())
@@ -178,7 +178,7 @@ impl Downloader {
     /// ```
     #[instrument(skip(self), fields(URL=%self.url, tasks=%self.workers))]
     pub async fn download(&self) -> Result<Vec<u8>> {
-        let mb = self.length / 1000000;
+        let mb = &self.length / 1000000;
         debug!("File size: {}MB", mb);
         let hndl_vec = self
             .chunks
