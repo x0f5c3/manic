@@ -1,3 +1,5 @@
+# v0.6.3 (2021-10-4)
+- [Fixed] Content length issues
 # v0.6.2 (2021-5-5)
 - [Added] getters for Downloader
 

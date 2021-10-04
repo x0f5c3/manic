@@ -1,6 +1,6 @@
 [package]
 name = "manic"
-version = "0.6.2"
+version = "0.6.3"
 authors = ["x0f5c3 <x0f5c3@tutanota.com>"]
 edition = "2018"
 description = "Fast and simple async downloads"
@@ -40,3 +40,4 @@ features = ["stream", "rustls-tls"]
 
 [dev-dependencies]
 pretty_env_logger = "0.4.0"
+log = "0.4.14"

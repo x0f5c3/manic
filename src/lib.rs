@@ -34,7 +34,6 @@ mod downloader;
 mod error;
 mod hash;
 
-
 pub use downloader::Downloader;
 pub use error::{Error, Result};
 pub use hash::Hash;

@@ -2,7 +2,7 @@ use crate::chunk::Chunks;
 use crate::Error;
 use crate::Hash;
 use crate::Result;
-use reqwest::header::RANGE;
+use reqwest::header::{CONTENT_LENGTH, RANGE};
 use reqwest::Client;
 use std::path::Path;
 use tokio::fs::File;
@@ -32,7 +32,12 @@ impl Downloader {
     pub fn filename(&self) -> &str {
         &self.filename
     }
-    async fn assemble_downloader(url: &str, workers: u8, length: u64, client: Client) -> Result<Self> {
+    async fn assemble_downloader(
+        url: &str,
+        workers: u8,
+        length: u64,
+        client: Client,
+    ) -> Result<Self> {
         let parsed = reqwest::Url::parse(url)?;
         if length == 0 {
             return Err(Error::NoLen);
@@ -260,16 +265,27 @@ impl Downloader {
     }
 }
 
+#[instrument(skip(client, url), fields(URL=%url))]
 async fn content_length(client: &Client, url: &str) -> Result<u64> {
     let resp = client.head(url).send().await?;
     debug!("Response code: {}", resp.status());
     debug!("Received HEAD response: {:?}", resp.headers());
-    let heads = resp.headers();
-    let len = heads.get("content-length").ok_or(Error::NoLen);
-    if len.is_ok() {
-        let raw = len.unwrap();
-        raw.to_str().map_err(|_x| Error::NoLen)?.parse::<u64>().map_err(|_x| Error::NoLen)
+    let len = resp.headers().get("content-length").ok_or(Error::NoLen);
+    if len.is_ok() && resp.status().is_success() {
+        len?.to_str()
+            .map_err(|_x| Error::NoLen)?
+            .parse::<u64>()
+            .map_err(|_x| Error::NoLen)
     } else {
-        Err(len.unwrap_err())
+        let resp = client.get(url).header(RANGE, "0-0").send().await?;
+        debug!("Response code: {}", resp.status());
+        debug!("Received GET 1B response: {:?}", resp.headers());
+        resp.headers()
+            .get(CONTENT_LENGTH)
+            .ok_or(Error::NoLen)?
+            .to_str()
+            .map_err(|_| Error::NoLen)?
+            .parse::<u64>()
+            .map_err(|_| Error::NoLen)
     }
 }
