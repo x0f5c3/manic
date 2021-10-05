@@ -1,6 +1,6 @@
 [package]
 name = "manic"
-version = "0.6.3"
+version = "0.6.4"
 authors = ["x0f5c3 <x0f5c3@tutanota.com>"]
 edition = "2018"
 description = "Fast and simple async downloads"
@@ -36,7 +36,7 @@ tracing-futures = "0.2.5"
 
 
 [dependencies.reqwest]
-version = "0.11.3"
+version = "0.11.4"
 default-features = false
 features = ["stream"]
 
