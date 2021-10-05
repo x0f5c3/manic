@@ -19,9 +19,11 @@ targets = ["x86_64-apple-darwin", "x86_64-pc-windows-msvc", "x86_64-pc-windows-g
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 [features]
-default = []
+default = ["rustls", "json", "progress"]
 progress = ["indicatif"]
 json = ["reqwest/json"]
+rustls = ["reqwest/rustls-tls"]
+openssl = ["reqwest/native-tls"]
 
 [dependencies]
 tokio = { version = "^1.5.0", features = ["fs", "rt-multi-thread", "macros"] }
@@ -36,7 +38,7 @@ tracing-futures = "0.2.5"
 [dependencies.reqwest]
 version = "0.11.3"
 default-features = false
-features = ["stream", "rustls-tls"]
+features = ["stream"]
 
 [dev-dependencies]
 pretty_env_logger = "0.4.0"

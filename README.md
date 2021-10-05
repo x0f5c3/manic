@@ -29,14 +29,13 @@ This crate is a work in progress
 
 
 ```rust
-use manic::downloader;
-use reqwest::Client;
+use manic::Downloader;
 
 #[tokio::main]
 async fn main() -> Result<(), manic::Error> {
-    let client = Client::new();
     let number_of_concurrent_tasks: u8 = 5;
-    let result = downloader::download(&client, "https://crates.io", number_of_concurrent_tasks).await?;
+    let client = Downloader::new("https://crates.io", number_of_concurrent_tasks).await?;
+    let result = client.download().await?;
     Ok(())
 }
 ```
