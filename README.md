@@ -2,6 +2,7 @@
 
 [![Crates.io](https://img.shields.io/crates/l/manic)](https://github.com/x0f5c3/manic)
 [![Crates.io](https://img.shields.io/crates/v/manic)](https://crates.io/crates/manic)
+[![Tests](https://github.com/x0f5c3/manic/workflows/Tests/badge.svg)](https://github.com/x0f5c3/manic/workflows/Tests)
 
 [![Crates.io](https://img.shields.io/crates/d/manic)](https://crates.io/crates/manic)
 [![dependency status](https://deps.rs/crate/manic/0.6.0/status.svg)](https://deps.rs/crate/manic/0.6.0)
