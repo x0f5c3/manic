@@ -4,3 +4,4 @@ Cargo.lock
 /git-journal.fish
 /git-journal.bash
 /.gtm/
+.idea

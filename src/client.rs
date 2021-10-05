@@ -140,7 +140,7 @@ impl Response {
     pub fn check_redirect(&self, origin: &hyper::Uri) -> Result<Option<hyper::Uri>> {
         let status = self.0.status().as_u16();
         if status == 301 || status == 308 || status == 302 || status == 303 || status == 307 {
-            let loc = self.0.headers()[LOCATION].to_str()?;
+            let loc = self.0.headers().get(LOCATION).ok_or(Error::NoLoc)?.to_str()?;
             let uri = loc.parse::<hyper::Uri>()?;
             return if uri.host().is_some() {
                 Ok(Some(uri))

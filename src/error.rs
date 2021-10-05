@@ -46,6 +46,8 @@ pub enum Error {
     /// Missing content-length header
     #[error("No content-length")]
     NoLen,
+    #[error("No LOCATION header")]
+    NoLoc,
 }
 
 /// Alias for Result<T, manic::Error>
