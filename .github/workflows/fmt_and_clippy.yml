@@ -22,3 +22,5 @@ jobs:
       run: cargo fmt -- --check
     - name: Run test
       run: cargo test remote
+      env:
+        RUST_LOG: manic=debug
