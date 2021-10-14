@@ -21,7 +21,7 @@
 //! ```no_run
 //! use manic::Downloader;
 //! #[tokio::main]
-//! async fn main() -> Result<(), manic::Error> {
+//! async fn main() -> Result<(), manic::ManicError> {
 //!     let number_of_concurrent_tasks: u8 = 5;
 //!     let client = Downloader::new("https://crates.io", number_of_concurrent_tasks).await?;
 //!     let result = client.download().await?;
@@ -33,9 +33,10 @@ mod chunk;
 mod downloader;
 mod error;
 mod hash;
+mod multi;
 
 pub use downloader::Downloader;
-pub use error::{Error, Result};
+pub use error::{ManicError, Result};
 pub use hash::Hash;
 #[cfg(feature = "progress")]
 pub use indicatif::ProgressStyle;

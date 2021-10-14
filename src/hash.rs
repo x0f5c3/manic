@@ -1,4 +1,4 @@
-use crate::{Error, Result};
+use crate::{ManicError, Result};
 use sha2::Digest;
 use sha2::{Sha224, Sha256, Sha384, Sha512};
 use std::fmt;
@@ -41,7 +41,7 @@ impl Hash {
             debug!("SHAsum match!");
             Ok(())
         } else {
-            Err(Error::SHA256MisMatch(to_verify))
+            Err(ManicError::SHA256MisMatch(to_verify))
         }
     }
 }

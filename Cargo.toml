@@ -8,7 +8,7 @@ readme = "README.md"
 repository = "https://github.com/x0f5c3/manic"
 license = "MIT OR Apache-2.0"
 keywords = ["download", "http", "async"]
-categories = ["asynchronous","web-programming::http-client", "network-programming"]
+categories = ["asynchronous", "web-programming::http-client", "network-programming"]
 exclude = [".idea", ".gtm"]
 
 [package.metadata.docs.rs]
@@ -33,6 +33,8 @@ sha2 = "0.9.8"
 indicatif = { version = "0.16.2", optional = true }
 tracing = { version = "0.1.28", features = ["log"] }
 tracing-futures = "0.2.5"
+futures = "*"
+rayon = "*"
 
 
 [dependencies.reqwest]
