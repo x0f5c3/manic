@@ -36,7 +36,7 @@ impl ChunkVec {
         output.sync_all().await?;
         Ok(())
     }
-    pub(crate) async fn as_vec(&self) -> Vec<u8> {
+    pub async fn as_vec(&self) -> Vec<u8> {
         self.buf.lock().await.clone().into_inner()
     }
     pub(crate) async fn from_vec(v: Vec<Chunk>) -> Result<Self> {

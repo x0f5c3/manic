@@ -1,4 +1,5 @@
 #![allow(dead_code)]
+use crate::chunk::ChunkVec;
 use crate::downloader::join_all;
 use crate::error::ManicError;
 use crate::Result;
@@ -10,7 +11,6 @@ use std::sync::Arc;
 use tokio::fs::File;
 use tokio::io::AsyncWriteExt;
 use tokio::sync::{Mutex, MutexGuard};
-use crate::chunk::ChunkVec;
 
 #[derive(Clone, Debug)]
 pub struct Map(Arc<Mutex<HashMap<String, Downloader>>>);

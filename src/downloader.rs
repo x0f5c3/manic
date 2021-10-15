@@ -178,7 +178,7 @@ impl Downloader {
     pub async fn download(&self) -> Result<ChunkVec> {
         let mb = &self.length / 1000000;
         debug!("File size: {}MB", mb);
-        let chnks = self.chunks.clone();
+        let chnks = self.chunks;
         let url = self.url.clone();
         let client = self.client.clone();
         #[cfg(feature = "progress")]
@@ -215,7 +215,7 @@ impl Downloader {
         Ok(Downloaded::new(
             self.get_url(),
             self.filename,
-            res.as_vec().await.clone(),
+            res.as_vec().await,
         ))
     }
     /// Used to download, save to a file and verify against a SHA256 sum,
@@ -295,10 +295,9 @@ pub(crate) async fn join_all<T: Clone>(i: Vec<JoinHandle<Result<T>>>) -> Result<
         .cloned()
         .collect::<Vec<_>>();
     let errs = results
-        .clone()
         .iter()
-        .filter_map(|x| x.as_ref().err())
         .cloned()
+        .filter_map(|x| x.err())
         .collect::<Vec<_>>();
     let successful = results
         .iter()
