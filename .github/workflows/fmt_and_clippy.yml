@@ -18,7 +18,3 @@ jobs:
         run: cargo clippy --all-features -- -D warnings
       - name: Run fmt check
         run: cargo fmt -- --check
-      - name: Run test
-        run: cargo test remote
-        env:
-          RUST_LOG: manic=debug

@@ -47,6 +47,7 @@ impl ChunkVec {
             .cloned()
             .map(|x: Chunk| tokio::spawn(write_cursor(wrapped.clone(), x)))
             .collect();
+        join_all(fut_vec).await?;
         Ok(Self {
             chunks: Arc::new(v),
             buf: wrapped,
