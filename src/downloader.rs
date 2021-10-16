@@ -195,20 +195,13 @@ impl Downloader {
                 ))
             })
             .collect::<Vec<_>>();
-        let mut res: Vec<Chunk> = join_all(hndl_vec).await?;
-        res.sort_unstable_by(|a, b| a.pos.cmp(&b.pos));
-        let result: Vec<u8> = {
-            let mut result = Vec::new();
-            for i in &res {
-                result.append(&mut i.buf.lock().await.to_vec());
-            }
-            result
-        };
+        let res: Vec<Chunk> = join_all(hndl_vec).await?;
+        let result = ChunkVec::from_vec(res).await?;
         if let Some(hash) = &self.hash {
-            hash.verify(&result)?;
+            result.verify(hash).await?;
             debug!("Compared");
         }
-        ChunkVec::from_vec(res).await
+        Ok(result)
     }
     pub(crate) async fn multi_download(self) -> Result<Downloaded> {
         let res = self.download().await?;

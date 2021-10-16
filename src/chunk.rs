@@ -1,13 +1,13 @@
 use crate::downloader::join_all;
-use crate::ManicError;
 use crate::Result;
-use rayon::prelude::*;
+use crate::{Hash, ManicError};
 use std::io::Cursor;
 use std::io::SeekFrom;
 use std::sync::Arc;
 use tokio::fs::File;
 use tokio::io::{AsyncSeekExt, AsyncWriteExt};
 use tokio::sync::Mutex;
+use tracing::{info, instrument};
 
 /// Iterator over remote file chunks that returns a formatted [`RANGE`][reqwest::header::RANGE] header value
 #[derive(Debug, Clone, Copy)]
@@ -43,7 +43,7 @@ impl ChunkVec {
         let cur = Cursor::new(Vec::new());
         let wrapped = Arc::new(Mutex::new(cur));
         let fut_vec: Vec<_> = v
-            .par_iter()
+            .iter()
             .cloned()
             .map(|x: Chunk| tokio::spawn(write_cursor(wrapped.clone(), x)))
             .collect();
@@ -53,12 +53,17 @@ impl ChunkVec {
             buf: wrapped,
         })
     }
+    pub(crate) async fn verify(&self, hash: &Hash) -> Result<()> {
+        hash.verify(self.as_vec().await.as_slice())
+    }
 }
-
+#[instrument(skip(cur, chunk), fields(low=%chunk.low, hi=%chunk.hi, range=%chunk.bytes, pos=%chunk.pos, len=%chunk.len))]
 async fn write_cursor(cur: Arc<Mutex<Cursor<Vec<u8>>>>, chunk: Chunk) -> Result<()> {
     let mut lock = cur.lock().await;
     lock.seek(SeekFrom::Start(chunk.low)).await?;
-    lock.write_all(chunk.buf.lock().await.as_slice()).await?;
+    info!("Seeked");
+    let n = lock.write(chunk.buf.lock().await.as_slice()).await?;
+    info!("Written {} bytes", n);
     Ok(())
 }
 
@@ -68,16 +73,18 @@ pub struct Chunk {
     pub low: u64,
     pub hi: u64,
     pub pos: u64,
+    pub len: u64,
     pub bytes: String,
 }
 
 impl Chunk {
+    #[instrument(skip(self, output), fields(low=%self.low, hi=%self.hi, range=%self.bytes, pos=%self.pos))]
     pub(crate) async fn save(self, mut output: File) -> Result<()> {
         output.seek(SeekFrom::Start(self.low)).await?;
-        output
-            .write_all(self.buf.lock().await.as_slice())
-            .await
-            .map_err(|x| x.into())
+        info!("Seeked");
+        let n = output.write(self.buf.lock().await.as_slice()).await?;
+        info!("Written {} bytes", n);
+        Ok(())
     }
 }
 
@@ -110,14 +117,16 @@ impl Iterator for Chunks {
             self.low += std::cmp::min(self.chunk_size, self.hi - self.low + 1);
             let chunk_len = (self.low - 1) - prev_low;
             let bytes = format!("bytes={}-{}", prev_low, self.low - 1);
-            self.current_pos += 1;
-            Some(Chunk {
-                buf: Arc::new(Mutex::new(vec![0; chunk_len as usize])),
+            let res = Chunk {
+                buf: Arc::new(Mutex::new(Vec::new())),
                 low: prev_low,
                 hi: self.low - 1,
+                len: chunk_len,
                 pos: self.current_pos,
                 bytes,
-            })
+            };
+            self.current_pos += 1;
+            Some(res)
         }
     }
 }
