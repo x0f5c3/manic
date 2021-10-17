@@ -1,5 +1,5 @@
 #![allow(dead_code)]
-use crate::chunk::{Chunk, ChunkVec, Chunks};
+use crate::chunk::{ChunkVec, Chunks};
 use crate::multi::Downloaded;
 use crate::Hash;
 use crate::ManicError;
@@ -136,30 +136,6 @@ impl Downloader {
         self.hash = Some(hash);
         self.to_owned()
     }
-    #[instrument(skip(client, pb, val), fields(range = %val.bytes))]
-    async fn download_chunk(
-        client: Client,
-        url: String,
-        pb: Option<ProgressBar>,
-        val: Chunk,
-    ) -> Result<Chunk> {
-        let mut resp = client
-            .get(url.to_string())
-            .header(RANGE, val.bytes.clone())
-            .send()
-            .await?;
-        {
-            let mut res = val.buf.lock().await;
-            while let Some(chunk) = resp.chunk().await? {
-                #[cfg(feature = "progress")]
-                if let Some(bar) = &pb {
-                    bar.inc(chunk.len() as u64);
-                }
-                res.append(&mut chunk.to_vec());
-            }
-            Ok(val.clone())
-        }
-    }
     /// Download the file and verify if hash is set
     ///
     /// # Example
@@ -183,20 +159,18 @@ impl Downloader {
         let client = self.client.clone();
         #[cfg(feature = "progress")]
         let pb = self.pb.clone();
-        let hndl_vec = chnks
-            .into_iter()
-            .map(move |x| {
-                tokio::spawn(Self::download_chunk(
-                    client.clone(),
-                    url.clone().to_string(),
-                    #[cfg(feature = "progress")]
-                    pb.clone(),
-                    x,
-                ))
-            })
-            .collect::<Vec<_>>();
-        let res: Vec<Chunk> = join_all(hndl_vec).await?;
-        let result = ChunkVec::from_vec(res).await?;
+        // let hndl_vec = chnks
+        //     .into_iter()
+        //     .map(move |x| {
+        //         tokio::spawn(x.download(&client, url.to_string(),
+        //         #[cfg(feature = "progress")]
+        //                 pb,
+        //         ))
+        //     })
+        //     .collect::<Vec<_>>();
+        // let res: Vec<Chunk> = join_all(hndl_vec).await?;
+        // let result = ChunkVec::from_vec(res).await?;
+        let result = chnks.download(client, url.to_string(), pb).await?;
         if let Some(hash) = &self.hash {
             result.verify(hash).await?;
             debug!("Compared");

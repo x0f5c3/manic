@@ -33,6 +33,7 @@ indicatif = { version = "0.16.2", optional = true }
 tracing = { version = "0.1.28", features = ["log"] }
 tracing-futures = "0.2.5"
 futures = "*"
+rayon = "*"
 
 
 [dependencies.reqwest]
@@ -43,3 +44,8 @@ features = ["stream"]
 [dev-dependencies]
 pretty_env_logger = "0.4.0"
 log = "0.4.14"
+criterion = { version = "*", features = ["async_tokio"] }
+
+[[bench]]
+name = "remote_benchmark"
+harness = false

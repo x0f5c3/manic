@@ -1,7 +1,10 @@
+use crate::cursor::MyCursor;
 use crate::downloader::join_all;
-use crate::Result;
+use crate::header::RANGE;
+use crate::{Client, Result};
 use crate::{Hash, ManicError};
-use std::io::Cursor;
+use indicatif::ProgressBar;
+use rayon::prelude::*;
 use std::io::SeekFrom;
 use std::sync::Arc;
 use tokio::fs::File;
@@ -21,7 +24,7 @@ pub struct Chunks {
 #[derive(Debug, Clone)]
 pub struct ChunkVec {
     chunks: Arc<Vec<Chunk>>,
-    buf: Arc<Mutex<Cursor<Vec<u8>>>>,
+    buf: MyCursor<Vec<u8>>,
 }
 
 impl ChunkVec {
@@ -37,11 +40,10 @@ impl ChunkVec {
         Ok(())
     }
     pub async fn as_vec(&self) -> Vec<u8> {
-        self.buf.lock().await.clone().into_inner()
+        self.buf.as_inner().await
     }
     pub(crate) async fn from_vec(v: Vec<Chunk>) -> Result<Self> {
-        let cur = Cursor::new(Vec::new());
-        let wrapped = Arc::new(Mutex::new(cur));
+        let wrapped = MyCursor::new(Vec::new());
         let fut_vec: Vec<_> = v
             .iter()
             .cloned()
@@ -49,7 +51,7 @@ impl ChunkVec {
             .collect();
         join_all(fut_vec).await?;
         Ok(Self {
-            chunks: Arc::new(v),
+            chunks: Arc::new(v.par_iter().cloned().map(|x| x.clone()).collect()),
             buf: wrapped,
         })
     }
@@ -58,7 +60,7 @@ impl ChunkVec {
     }
 }
 #[instrument(skip(cur, chunk), fields(low=%chunk.low, hi=%chunk.hi, range=%chunk.bytes, pos=%chunk.pos, len=%chunk.len))]
-async fn write_cursor(cur: Arc<Mutex<Cursor<Vec<u8>>>>, chunk: Chunk) -> Result<()> {
+async fn write_cursor(cur: MyCursor<Vec<u8>>, chunk: Chunk) -> Result<()> {
     let mut lock = cur.lock().await;
     lock.seek(SeekFrom::Start(chunk.low)).await?;
     info!("Seeked");
@@ -86,6 +88,30 @@ impl Chunk {
         info!("Written {} bytes", n);
         Ok(())
     }
+    #[instrument(skip(self, client, pb), fields(range = %self.bytes))]
+    pub(crate) async fn download(
+        self,
+        client: Client,
+        url: String,
+        pb: Option<ProgressBar>,
+    ) -> Result<Self> {
+        let mut resp = client
+            .get(url.to_string())
+            .header(RANGE, self.bytes.clone())
+            .send()
+            .await?;
+        {
+            let mut res = self.buf.lock().await;
+            while let Some(chunk) = resp.chunk().await? {
+                #[cfg(feature = "progress")]
+                if let Some(bar) = &pb {
+                    bar.inc(chunk.len() as u64);
+                }
+                res.append(&mut chunk.to_vec());
+            }
+            Ok(self.to_owned())
+        }
+    }
 }
 
 impl Chunks {
@@ -104,6 +130,25 @@ impl Chunks {
             chunk_size,
             current_pos: 1,
         })
+    }
+    pub async fn download(
+        &self,
+        client: Client,
+        url: String,
+        pb: Option<ProgressBar>,
+    ) -> Result<ChunkVec> {
+        let fut_vec = self
+            .map(|x| {
+                tokio::spawn(x.download(
+                    client.clone(),
+                    url.clone(),
+                    #[cfg(feature = "progress")]
+                    pb.clone(),
+                ))
+            })
+            .collect::<Vec<_>>();
+        let list = join_all(fut_vec).await?;
+        ChunkVec::from_vec(list).await
     }
 }
 
