@@ -34,6 +34,7 @@ tracing = { version = "0.1.28", features = ["log"] }
 tracing-futures = "0.2.5"
 futures = "*"
 rayon = "*"
+tokio-rayon = "2.1.0"
 
 
 [dependencies.reqwest]

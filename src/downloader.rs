@@ -4,6 +4,7 @@ use crate::multi::Downloaded;
 use crate::Hash;
 use crate::ManicError;
 use crate::Result;
+use futures::Future;
 use indicatif::ProgressBar;
 use reqwest::header::{CONTENT_LENGTH, RANGE};
 use reqwest::Client;
@@ -182,7 +183,7 @@ impl Downloader {
         Ok(Downloaded::new(
             self.get_url(),
             self.filename,
-            res.as_vec().await,
+            res.as_vec().await?,
         ))
     }
     /// Used to download, save to a file and verify against a SHA256 sum,
@@ -257,24 +258,39 @@ async fn content_length(client: &Client, url: &str) -> Result<u64> {
 pub(crate) async fn join_all<T: Clone>(i: Vec<JoinHandle<Result<T>>>) -> Result<Vec<T>> {
     let results = futures::future::join_all(i)
         .await
-        .iter_mut()
-        .filter_map(|x| x.as_ref().ok())
-        .cloned()
+        .into_iter()
+        .filter_map(|x| x.ok())
         .collect::<Vec<_>>();
     let errs = results
         .iter()
+        .filter_map(|x| x.as_ref().err())
         .cloned()
-        .filter_map(|x| x.err())
         .collect::<Vec<_>>();
     let successful = results
         .iter()
         .filter_map(|x| x.as_ref().ok())
         .cloned()
         .collect::<Vec<T>>();
-    if !errs.is_empty() && successful.is_empty() {
-        Err(errs.into())
-    } else if !successful.is_empty() {
-        Ok(successful)
+    check_err(errs, successful)
+}
+pub(crate) async fn join_all_futures<T: Clone, F: Future<Output = Result<T>>>(
+    i: Vec<F>,
+) -> Result<Vec<T>> {
+    let res = futures::future::join_all(i).await;
+    let errs = res
+        .iter()
+        .filter_map(|x| x.as_ref().err())
+        .cloned()
+        .collect::<Vec<ManicError>>();
+    let successful = res.into_iter().filter_map(|x| x.ok()).collect::<Vec<T>>();
+    check_err(errs, successful)
+}
+
+pub(crate) fn check_err<T: Clone>(err: Vec<ManicError>, good: Vec<T>) -> Result<Vec<T>> {
+    if !err.is_empty() && good.is_empty() {
+        Err(err.into())
+    } else if !good.is_empty() {
+        Ok(good)
     } else {
         Err(ManicError::NoResults)
     }

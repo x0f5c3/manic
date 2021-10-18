@@ -30,15 +30,15 @@
 //! ```
 
 mod chunk;
+mod cursor;
 mod downloader;
 mod error;
 mod hash;
 mod multi;
-mod cursor;
 
 pub use downloader::Downloader;
 pub use error::{ManicError, Result};
 pub use hash::Hash;
 #[cfg(feature = "progress")]
 pub use indicatif::ProgressStyle;
-pub use reqwest::{Client, Url, header};
+pub use reqwest::{header, Client, Url};

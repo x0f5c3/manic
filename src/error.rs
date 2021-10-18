@@ -125,11 +125,11 @@ impl From<reqwest::header::ToStrError> for ManicError {
 
 pub type Result<T> = std::result::Result<T, ManicError>;
 
-impl From<Vec<ManicError>> for ManicError {
-    fn from(errs: Vec<ManicError>) -> Self {
+impl<I: Into<ManicError>> From<Vec<I>> for ManicError {
+    fn from(errs: Vec<I>) -> Self {
         let mut msg = String::new();
         for i in errs {
-            msg += &format!("- [{}]", i);
+            msg += &format!("- [{}]", i.into());
         }
         Self::MultipleErrors(msg)
     }
