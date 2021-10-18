@@ -1,11 +1,11 @@
+use crate::{ManicError, Result};
+use sha2::Digest;
+use sha2::{Sha224, Sha256, Sha384, Sha512};
 use std::fmt;
-
-use crate::{Result, Error};
 use tracing::debug;
-use sha2::{Sha256, Sha224, Sha512, Sha384, Digest};
 
 /// Available checksum types
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum Hash {
     /// Sha224 sum
     SHA224(String),
@@ -25,24 +25,8 @@ impl fmt::Display for Hash {
         }
     }
 }
+
 impl Hash {
-    /// Compare SHA256 of the data to the given sum,
-    /// will return an error if the sum is not equal to the data's
-    /// # Arguments
-    /// * `data` - u8 slice of data to compare
-    ///
-    /// # Example
-    ///
-    /// ```
-    /// use manic::Error;
-    /// use manic::Hash;
-    /// # fn main() -> Result<(), Error> {
-    ///     let data: &[u8] = &[1,2,3];
-    ///     let hash = Hash::SHA256("039058c6f2c0cb492c533b0a4d14ef77cc0f78abccced5287d84a1a2011cfb81".to_string());
-    ///     hash.verify(data)?;
-    /// # Ok(())
-    /// # }
-    /// ```
     pub fn verify(&self, data: &[u8]) -> Result<()> {
         let hash_string = format!("{}", self);
         debug!("Comparing sum {}", hash_string);
@@ -57,7 +41,7 @@ impl Hash {
             debug!("SHAsum match!");
             Ok(())
         } else {
-            Err(Error::SHA256MisMatch(to_verify))
+            Err(ManicError::SHA256MisMatch(to_verify))
         }
     }
 }

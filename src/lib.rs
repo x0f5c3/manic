@@ -11,47 +11,34 @@
 //! ## Feature flags
 //!
 //! - `progress`: Enables progress reporting using `indicatif`
-//! - `rustls-tls`: Enables https through Rustls, enabled by default
-//! - `openssl-tls`: Enables https through openssl
+//! - `json`: Enables use of JSON features on the reqwest [`Client`][reqwest::Client]
 //!
 //!
 //! ## Crate usage
+//!
+//! # Example
+//!
 //! ```no_run
 //! use manic::Downloader;
-//!
 //! #[tokio::main]
-//! async fn main() -> Result<(), manic::Error> {
+//! async fn main() -> Result<(), manic::ManicError> {
 //!     let number_of_concurrent_tasks: u8 = 5;
 //!     let client = Downloader::new("https://crates.io", number_of_concurrent_tasks).await?;
 //!     let result = client.download().await?;
 //!     Ok(())
 //! }
 //! ```
-#![deny(missing_debug_implementations)]
-#![allow(dead_code)]
-#![warn(missing_docs)]
 
-pub use client::{Client, Response};
-#[doc(inline)]
-pub use downloader::Downloader;
-#[doc(inline)]
-pub use error::Error;
-#[doc(inline)]
-pub use error::Result;
-#[doc(inline)]
-pub use hash::Hash;
-
-pub(crate) mod chunk;
-/// This module is the main part of the crate
-pub mod downloader;
-/// Error definitions
-pub mod error;
+mod chunk;
+mod cursor;
+mod downloader;
+mod error;
 mod hash;
-/// Client
-pub mod client;
-#[cfg(feature = "github")]
-/// Interaction with github repos
-pub mod github;
+mod multi;
 
+pub use downloader::Downloader;
+pub use error::{ManicError, Result};
+pub use hash::Hash;
 #[cfg(feature = "progress")]
 pub use indicatif::ProgressStyle;
+pub use reqwest::{header, Client, Url};

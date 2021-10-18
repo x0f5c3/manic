@@ -1,0 +1,20 @@
+name: Tests
+
+on:
+  push:
+  pull_request:
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  build:
+
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v2
+      - name: Run clippy
+        run: cargo clippy --all-features -- -D warnings
+      - name: Run fmt check
+        run: cargo fmt -- --check

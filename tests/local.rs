@@ -1,16 +1,14 @@
-use manic::Downloader;
-
+use log::LevelFilter;
+use manic::{Downloader, Hash};
 #[tokio::test]
-async fn file_test() -> manic::Result<()> {
-    pretty_env_logger::init();
-    let mut dl = Downloader::new(
-        "https://cdimage.debian.org/debian-cd/current/amd64/iso-cd/debian-10.7.0-amd64-netinst.iso",
-        3,
-    )
-    .await?;
-    dl.verify(manic::Hash::SHA256(
-        "b317d87b0a3d5b568f48a92dcabfc4bc51fe58d9f67ca13b013f1b8329d1306d".to_string(),
+async fn file_test_local() -> manic::Result<()> {
+    pretty_env_logger::formatted_builder()
+        .filter(Some("manic"), LevelFilter::Debug)
+        .init();
+    let mut dl = Downloader::new("http://127.0.0.1:8000/geckodriver.exe", 1).await?;
+    dl.verify(Hash::SHA256(
+        "2853bad60721d5a97babdc5857e9a475120a2425c9e3a5cf5761fd92bb3ae2f3".to_string(),
     ));
-    let _data = dl.download_and_verify().await?;
+    let _data = dl.download().await?;
     Ok(())
 }

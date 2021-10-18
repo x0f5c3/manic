@@ -2,9 +2,10 @@
 
 [![Crates.io](https://img.shields.io/crates/l/manic)](https://github.com/x0f5c3/manic)
 [![Crates.io](https://img.shields.io/crates/v/manic)](https://crates.io/crates/manic)
+![Tests](https://github.com/x0f5c3/manic/actions/workflows/fmt_and_clippy.yml/badge.svg)
 
 [![Crates.io](https://img.shields.io/crates/d/manic)](https://crates.io/crates/manic)
-[![dependency status](https://deps.rs/crate/manic/0.2.2/status.svg)](https://deps.rs/crate/manic/0.2.2)
+[![dependency status](https://deps.rs/crate/manic/0.6.4/status.svg)](https://deps.rs/crate/manic/0.6.4)
 
 
 Fast and simple async downloads
@@ -19,6 +20,7 @@ This crate is a work in progress
 ### Feature flags
 
 - `progress`: Enables progress reporting using indicatif
+- `json`: Enables use of JSON features on the reqwest Client
 
 
 ### Crate usage
@@ -28,14 +30,13 @@ This crate is a work in progress
 
 
 ```rust
-use manic::downloader;
-use reqwest::Client;
+use manic::Downloader;
 
 #[tokio::main]
 async fn main() -> Result<(), manic::Error> {
-    let client = Client::new();
     let number_of_concurrent_tasks: u8 = 5;
-    let result = downloader::download(&client, "https://crates.io", number_of_concurrent_tasks).await?;
+    let client = Downloader::new("https://crates.io", number_of_concurrent_tasks).await?;
+    let _ = client.download().await?;
     Ok(())
 }
 ```
