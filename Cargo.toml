@@ -8,7 +8,7 @@ readme = "README.md"
 repository = "https://github.com/x0f5c3/manic"
 license = "MIT OR Apache-2.0"
 keywords = ["download", "http", "async"]
-categories = ["asynchronous","web-programming::http-client", "network-programming"]
+categories = ["asynchronous", "web-programming::http-client", "network-programming"]
 exclude = [".idea", ".gtm"]
 
 [package.metadata.docs.rs]
@@ -43,3 +43,8 @@ features = ["stream"]
 [dev-dependencies]
 pretty_env_logger = "0.4.0"
 log = "0.4.14"
+criterion = { version = "0.3.5", features = ["async_tokio"] }
+
+[[bench]]
+name = "bench_remote"
+harness = false
