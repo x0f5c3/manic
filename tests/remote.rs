@@ -13,7 +13,7 @@ async fn file_test() -> manic::Result<()> {
     dl.verify(Hash::SHA256(
         "0ac1e91826eabd78b1aca342ac11292a7399a2fdf714158298bae1d1bd12390b".to_string(),
     ));
-    let _data = dl.download_and_verify().await?;
+    let _data = dl.download().await?;
 
     Ok(())
 }

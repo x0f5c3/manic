@@ -1,12 +1,16 @@
-use crate::chunk::Chunks;
-use crate::Error;
+#![allow(dead_code)]
+use crate::chunk::{ChunkVec, Chunks};
+use crate::multi::Downloaded;
 use crate::Hash;
+use crate::ManicError;
 use crate::Result;
+use indicatif::ProgressBar;
 use reqwest::header::{CONTENT_LENGTH, RANGE};
 use reqwest::Client;
 use std::path::Path;
 use tokio::fs::File;
 use tokio::io::AsyncWriteExt;
+use tokio::task::JoinHandle;
 use tracing::{debug, instrument};
 
 #[derive(Debug, Clone)]
@@ -29,6 +33,9 @@ impl Downloader {
     pub fn get_url(&self) -> String {
         self.url.to_string()
     }
+    pub fn get_len(&self) -> u64 {
+        self.length
+    }
     pub fn filename(&self) -> &str {
         &self.filename
     }
@@ -40,10 +47,10 @@ impl Downloader {
     ) -> Result<Self> {
         let parsed = reqwest::Url::parse(url)?;
         if length == 0 {
-            return Err(Error::NoLen);
+            return Err(ManicError::NoLen);
         }
         let chunks = Chunks::new(0, length - 1, length / workers as u64)?;
-        let filename = Self::get_filename(&parsed)?;
+        let filename = Self::url_to_filename(&parsed)?;
         #[cfg(not(feature = "progress"))]
         return Ok(Self {
             filename,
@@ -81,7 +88,7 @@ impl Downloader {
     /// ```no_run
     /// use manic::Downloader;
     /// # #[tokio::main]
-    /// # async fn main() -> Result<(), manic::Error> {
+    /// # async fn main() -> Result<(), manic::ManicError> {
     ///     // If only one TLS feature is enabled
     ///     let downloader = Downloader::new("https://crates.io", 5).await?;
     ///
@@ -93,24 +100,7 @@ impl Downloader {
         let length = content_length(&client, url).await?;
         Self::assemble_downloader(url, workers, length, client).await
     }
-    /// Get filename from the url, returns an error if the url contains no filename
-    ///
-    /// # Arguments
-    ///
-    /// * `url` - &str with the url
-    ///
-    /// # Example
-    /// ```
-    /// use manic::Downloader;
-    /// use manic::Error;
-    /// # fn main() -> Result<(), Error> {
-    ///     let url = manic::Url::parse("https://test.rs/test.zip")?;
-    ///     let name = Downloader::get_filename(&url)?;
-    ///     assert_eq!("test.zip", name);
-    /// # Ok(())
-    /// # }
-    /// ```
-    pub fn get_filename(url: &reqwest::Url) -> Result<String> {
+    pub(crate) fn url_to_filename(url: &reqwest::Url) -> Result<String> {
         url.path_segments()
             .and_then(|segments| segments.last())
             .and_then(|name| {
@@ -120,13 +110,17 @@ impl Downloader {
                     Some(name.to_string())
                 }
             })
-            .ok_or_else(|| Error::NoFilename(url.to_string()))
+            .ok_or_else(|| ManicError::NoFilename(url.to_string()))
     }
     /// Enable progress reporting
     #[cfg(feature = "progress")]
     pub fn progress_bar(&mut self) -> &mut Self {
         self.pb = Some(indicatif::ProgressBar::new(self.length));
         self
+    }
+    #[cfg(feature = "progress")]
+    pub fn connect_progress(&mut self, pb: ProgressBar) {
+        self.pb = Some(pb);
     }
     /// Set the progress bar style
     #[cfg(feature = "progress")]
@@ -142,83 +136,54 @@ impl Downloader {
         self.hash = Some(hash);
         self.to_owned()
     }
-    #[instrument(skip(self))]
-    async fn download_chunk(&self, val: String) -> Result<Vec<u8>> {
-        let mut resp = self
-            .client
-            .get(&self.url.to_string())
-            .header(RANGE, val)
-            .send()
-            .await?;
-        {
-            let mut res = Vec::new();
-            while let Some(chunk) = resp.chunk().await? {
-                #[cfg(feature = "progress")]
-                if let Some(bar) = &self.pb {
-                    bar.inc(chunk.len() as u64);
-                }
-                res.append(&mut chunk.to_vec());
-            }
-            Ok(res)
-        }
-    }
-    /// Download the file
+    /// Download the file and verify if hash is set
     ///
     /// # Example
     ///
     /// ```no_run
     /// use manic::Downloader;
-    /// use manic::Error;
+    /// use manic::ManicError;
     /// # #[tokio::main]
-    /// # async fn main() -> Result<(), Error> {
+    /// # async fn main() -> Result<(), ManicError> {
     /// let client = Downloader::new("https://crates.io", 5).await?;
     /// let result = client.download().await?;
     /// # Ok(())
     /// # }
     /// ```
     #[instrument(skip(self), fields(URL=%self.url, tasks=%self.workers))]
-    pub async fn download(&self) -> Result<Vec<u8>> {
+    pub async fn download(&self) -> Result<ChunkVec> {
         let mb = &self.length / 1000000;
         debug!("File size: {}MB", mb);
-        let hndl_vec = self
-            .chunks
-            .into_iter()
-            .map(move |x| self.download_chunk(x))
-            .collect::<Vec<_>>();
-        let result: Vec<u8> = {
-            let mut result = Vec::new();
-            for i in hndl_vec {
-                let mut curr_part = i.await?;
-                result.append(&mut curr_part);
-            }
-            result
-        };
-
-        Ok(result)
-    }
-    /// Download and verify the file
-    ///
-    /// # Example
-    ///
-    /// ```no_run
-    /// use manic::Downloader;
-    /// use manic::Error;
-    /// # #[tokio::main]
-    /// # async fn main() -> Result<(), Error> {
-    /// let client = Downloader::new("https://crates.io", 5).await?;
-    /// let result = client.download_and_verify().await?;
-    /// # Ok(())
-    /// # }
-    /// ```
-    #[instrument(skip(self))]
-    pub async fn download_and_verify(&self) -> Result<Vec<u8>> {
-        let data = self.download().await?;
-        debug!("Downloaded");
+        let chnks = self.chunks;
+        let url = self.url.clone();
+        let client = self.client.clone();
+        #[cfg(feature = "progress")]
+        let pb = self.pb.clone();
+        // let hndl_vec = chnks
+        //     .into_iter()
+        //     .map(move |x| {
+        //         tokio::spawn(x.download(&client, url.to_string(),
+        //         #[cfg(feature = "progress")]
+        //                 pb,
+        //         ))
+        //     })
+        //     .collect::<Vec<_>>();
+        // let res: Vec<Chunk> = join_all(hndl_vec).await?;
+        // let result = ChunkVec::from_vec(res).await?;
+        let result = chnks.download(client, url.to_string(), pb).await?;
         if let Some(hash) = &self.hash {
-            hash.verify(&data)?;
+            result.verify(hash).await?;
             debug!("Compared");
         }
-        Ok(data)
+        Ok(result)
+    }
+    pub(crate) async fn multi_download(self) -> Result<Downloaded> {
+        let res = self.download().await?;
+        Ok(Downloaded::new(
+            self.get_url(),
+            self.filename,
+            res.as_vec().await,
+        ))
     }
     /// Used to download, save to a file and verify against a SHA256 sum,
     /// returns an error if the connection fails or if the sum doesn't match the one provided
@@ -231,19 +196,19 @@ impl Downloader {
     ///
     /// ```no_run
     /// use manic::Downloader;
-    /// use manic::Error;
+    /// use manic::ManicError;
     /// use manic::Hash;
     /// #[tokio::main]
-    /// async fn main() -> Result<(), Error> {
+    /// async fn main() -> Result<(), ManicError> {
     ///     let hash = Hash::SHA256("039058c6f2c0cb492c533b0a4d14ef77cc0f78abccced5287d84a1a2011cfb81".to_string());
     ///     let client = Downloader::new("https://crates.io", 5).await?.verify(hash);
-    ///     client.download_and_save("~/Downloads", true).await?;
+    ///     client.download_and_save("~/Downloads").await?;
     ///     Ok(())
     ///  }
     /// ```
     ///
     #[instrument(skip(self))]
-    pub async fn download_and_save(&self, path: &str, verify: bool) -> Result<()> {
+    pub async fn download_and_save(&self, path: &str) -> Result<()> {
         let mut result = {
             let original_path = Path::new(path);
             let file_path = if original_path.is_dir() {
@@ -253,12 +218,9 @@ impl Downloader {
             };
             File::create(file_path).await?
         };
-        let data = if verify {
-            self.download_and_verify().await?
-        } else {
-            self.download().await?
-        };
-        result.write_all(data.as_slice()).await?;
+        let data = self.download().await?;
+        let c = result.try_clone().await?;
+        data.save(c).await?;
         result.sync_all().await?;
         result.flush().await?;
         Ok(())
@@ -270,22 +232,50 @@ async fn content_length(client: &Client, url: &str) -> Result<u64> {
     let resp = client.head(url).send().await?;
     debug!("Response code: {}", resp.status());
     debug!("Received HEAD response: {:?}", resp.headers());
-    let len = resp.headers().get("content-length").ok_or(Error::NoLen);
+    let len = resp
+        .headers()
+        .get("content-length")
+        .ok_or(ManicError::NoLen);
     if len.is_ok() && resp.status().is_success() {
         len?.to_str()
-            .map_err(|_x| Error::NoLen)?
+            .map_err(|_x| ManicError::NoLen)?
             .parse::<u64>()
-            .map_err(|_x| Error::NoLen)
+            .map_err(|e| e.into())
     } else {
         let resp = client.get(url).header(RANGE, "0-0").send().await?;
         debug!("Response code: {}", resp.status());
         debug!("Received GET 1B response: {:?}", resp.headers());
         resp.headers()
             .get(CONTENT_LENGTH)
-            .ok_or(Error::NoLen)?
-            .to_str()
-            .map_err(|_| Error::NoLen)?
+            .ok_or(ManicError::NoLen)?
+            .to_str()?
             .parse::<u64>()
-            .map_err(|_| Error::NoLen)
+            .map_err(|e| e.into())
+    }
+}
+
+pub(crate) async fn join_all<T: Clone>(i: Vec<JoinHandle<Result<T>>>) -> Result<Vec<T>> {
+    let results = futures::future::join_all(i)
+        .await
+        .iter_mut()
+        .filter_map(|x| x.as_ref().ok())
+        .cloned()
+        .collect::<Vec<_>>();
+    let errs = results
+        .iter()
+        .cloned()
+        .filter_map(|x| x.err())
+        .collect::<Vec<_>>();
+    let successful = results
+        .iter()
+        .filter_map(|x| x.as_ref().ok())
+        .cloned()
+        .collect::<Vec<T>>();
+    if !errs.is_empty() && successful.is_empty() {
+        Err(errs.into())
+    } else if !successful.is_empty() {
+        Ok(successful)
+    } else {
+        Err(ManicError::NoResults)
     }
 }

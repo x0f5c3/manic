@@ -9,7 +9,6 @@ async fn file_test_local() -> manic::Result<()> {
     dl.verify(Hash::SHA256(
         "2853bad60721d5a97babdc5857e9a475120a2425c9e3a5cf5761fd92bb3ae2f3".to_string(),
     ));
-    let _data = dl.download_and_verify().await?;
-
+    let _data = dl.download().await?;
     Ok(())
 }

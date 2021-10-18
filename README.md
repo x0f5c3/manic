@@ -5,7 +5,7 @@
 ![Tests](https://github.com/x0f5c3/manic/actions/workflows/fmt_and_clippy.yml/badge.svg)
 
 [![Crates.io](https://img.shields.io/crates/d/manic)](https://crates.io/crates/manic)
-[![dependency status](https://deps.rs/crate/manic/0.6.4/status.svg)](https://deps.rs/crate/manic/0.6.0)
+[![dependency status](https://deps.rs/crate/manic/0.6.4/status.svg)](https://deps.rs/crate/manic/0.6.4)
 
 
 Fast and simple async downloads
@@ -36,7 +36,7 @@ use manic::Downloader;
 async fn main() -> Result<(), manic::Error> {
     let number_of_concurrent_tasks: u8 = 5;
     let client = Downloader::new("https://crates.io", number_of_concurrent_tasks).await?;
-    let result = client.download().await?;
+    let _ = client.download().await?;
     Ok(())
 }
 ```
