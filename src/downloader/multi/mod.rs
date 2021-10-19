@@ -1,8 +1,8 @@
 #![allow(dead_code)]
 use crate::chunk::ChunkVec;
-use crate::downloader::join_all;
 use crate::error::ManicError;
 use crate::Result;
+use crate::{join_all, join_all_futures};
 use crate::{Downloader, Hash};
 use indicatif::{MultiProgress, ProgressBar};
 use std::collections::HashMap;
@@ -93,9 +93,8 @@ impl MultiDownloader {
     }
     pub async fn verify(&mut self, url: String, hash: Hash) -> Result<()> {
         let mut lock = self.downloaders.lock().await;
-        let chosen: &mut Downloader = lock.get_mut(&url).ok_or(ManicError::NotFound)?;
-        let modified = chosen.verify(hash);
-        lock.insert(url, modified).ok_or(ManicError::NotFound)?;
+        let chosen = lock.get_mut(&url).ok_or(ManicError::NotFound)?;
+        chosen.verify(hash);
         Ok(())
     }
     pub async fn download_all(&self) -> Result<Vec<Downloaded>> {

@@ -5,9 +5,9 @@ use tokio::fs::File;
 use tokio::io::AsyncWriteExt;
 use tracing::{debug, instrument};
 
-use crate::Error;
 use crate::chunk::Chunks;
 use crate::Client;
+use crate::Error;
 use crate::Hash;
 use crate::Result;
 use hyper::header::RANGE;
@@ -41,7 +41,7 @@ impl Downloader {
         let filename = Self::get_filename(&uri)?;
         let chunks = Chunks::new(0, size - 1, size / workers as u64)?;
         #[cfg(not(feature = "progress"))]
-            return Ok(Self {
+        return Ok(Self {
             client,
             hash: None,
             filename,
@@ -51,7 +51,7 @@ impl Downloader {
             length: size,
         });
         #[cfg(feature = "progress")]
-            return Ok(Self {
+        return Ok(Self {
             client,
             hash: None,
             filename,
@@ -88,8 +88,7 @@ impl Downloader {
     /// Get filename from the url, returns an error if the url contains no filename
     #[instrument(skip(url),fields(URL=%url))]
     fn get_filename(url: &Uri) -> Result<String> {
-        url
-            .path()
+        url.path()
             .split('/')
             .last()
             .and_then(|name| {
@@ -154,7 +153,7 @@ impl Downloader {
         let req = hyper::Request::get(&self.url)
             .header(RANGE, val)
             .body(hyper::Body::empty())?;
-        let mut resp = self.client.request(req.into()).await?.0.into_body();
+        let mut resp = self.request(req.into()).await?.0.into_body();
         while let Some(Ok(chunk)) = resp.next().await {
             #[cfg(feature = "progress")]
             if let Some(bar) = &self.bar {
@@ -241,8 +240,8 @@ impl Downloader {
         Ok(result)
     }
     /// Set the hash to verify against
-    pub fn verify(&mut self, hash: Hash) {
+    pub fn verify(&mut self, hash: Hash) -> &mut Self {
         self.hash = Some(hash);
+        self
     }
 }
-

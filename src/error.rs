@@ -1,12 +1,10 @@
-use crate::Url;
-use reqwest::header::ToStrError;
-use reqwest::StatusCode;
+use hyper::StatusCode;
 use std::error::Error;
 use std::fmt;
 use std::fmt::Formatter;
 use std::num::ParseIntError;
 use tokio::io;
-use url::ParseError;
+use url::{ParseError, Url};
 
 /// Error definition for possible errors in this crate
 #[derive(Debug, Clone)]
@@ -18,12 +16,7 @@ pub enum ManicError {
     /// Represents problems with Tokio based IO
     TokioIOError(String),
     /// Represents problems with network connectivity
-    NetError {
-        url: Option<Url>,
-        code: Option<StatusCode>,
-        reason: Option<String>,
-        err: String,
-    },
+    NetError(String),
     /// Returned when the header can't be parsed to a String
     ToStr(String),
     /// Returned when there's no filename in the url
@@ -37,9 +30,16 @@ pub enum ManicError {
     NotFound,
     MultipleErrors(String),
     NoResults,
+    HTTPError(String),
 }
 
 impl Error for ManicError {}
+
+impl From<hyper::http::Error> for ManicError {
+    fn from(e: http::Error) -> Self {
+        Self::HTTPError(e.to_string())
+    }
+}
 
 impl fmt::Display for ManicError {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
@@ -47,28 +47,7 @@ impl fmt::Display for ManicError {
             Self::LenParse => write!(f, "Failed to parse content-length"),
             Self::NoLen => write!(f, "Failed to retrieve content-length"),
             Self::TokioIOError(s) => write!(f, "Tokio IO error: {}", s),
-            Self::NetError {
-                url,
-                code,
-                reason,
-                err,
-            } => {
-                let msg = {
-                    let mut tomod = "Reqwest error:\n".to_string();
-                    if let Some(u) = url {
-                        tomod.push_str(&format!("URL: {}\n", u))
-                    }
-                    if let Some(c) = code {
-                        tomod.push_str(&format!("Status code: {}\n", c))
-                    }
-                    if let Some(r) = reason {
-                        tomod.push_str(&format!("Reason: {}\n", r))
-                    }
-                    tomod.push_str(&format!("Error: {}", err));
-                    tomod
-                };
-                write!(f, "{}", msg)
-            }
+            Self::NetError(s) => write!(f, "Hyper error: {}", s),
             Self::ToStr(s) => write!(f, "Couldn't parse the header into string: {}", s),
             Self::NoFilename(s) => write!(f, "No filename in url: {}", s),
             Self::UrlParseError(s) => write!(f, "Failed to parse URL: {}", s),
@@ -77,6 +56,7 @@ impl fmt::Display for ManicError {
             Self::NotFound => write!(f, "Downloader not found"),
             Self::MultipleErrors(s) => write!(f, "{}", s),
             Self::NoResults => write!(f, "No errors and no results from join_all"),
+            Self::HTTPError(s) => write!(f, "HTTP error: {}", s),
         }
     }
 }
@@ -93,21 +73,9 @@ impl From<io::Error> for ManicError {
     }
 }
 
-impl From<reqwest::Error> for ManicError {
-    fn from(e: reqwest::Error) -> Self {
-        let res = {
-            if let Some(code) = e.status() {
-                code.canonical_reason().map(|x| x.to_string())
-            } else {
-                None
-            }
-        };
-        Self::NetError {
-            url: e.url().cloned(),
-            code: e.status(),
-            reason: res,
-            err: e.to_string(),
-        }
+impl From<hyper::Error> for ManicError {
+    fn from(e: hyper::Error) -> Self {
+        Self::NetError(e.to_string())
     }
 }
 
@@ -117,8 +85,8 @@ impl From<url::ParseError> for ManicError {
     }
 }
 
-impl From<reqwest::header::ToStrError> for ManicError {
-    fn from(e: ToStrError) -> Self {
+impl From<hyper::header::ToStrError> for ManicError {
+    fn from(e: hyper::header::ToStrError) -> Self {
         Self::ToStr(e.to_string())
     }
 }

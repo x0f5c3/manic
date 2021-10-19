@@ -1,3 +1,5 @@
+mod types;
+
 use hyper::header::{CONTENT_LENGTH, LOCATION};
 use hyper::{Body, Request};
 #[cfg(feature = "json")]
@@ -6,8 +8,8 @@ use serde::de::DeserializeOwned;
 use crate::Error;
 use crate::Result;
 use hyper::client::HttpConnector;
-use tracing::debug;
 use hyper_rustls::HttpsConnector;
+use tracing::debug;
 
 #[macro_use]
 macro_rules! head {
@@ -33,7 +35,8 @@ pub struct Client {
 impl Client {
     /// Construct a new client, follows redirects by default
     pub fn new() -> Self {
-        let client = hyper::Client::builder().build::<_, Body>(hyper_rustls::HttpsConnector::with_native_roots());
+        let client = hyper::Client::builder()
+            .build::<_, Body>(hyper_rustls::HttpsConnector::with_native_roots());
         Self {
             client,
             redirects: true,
@@ -63,15 +66,16 @@ impl Client {
         let parsed = url.parse::<hyper::Uri>()?;
         if self.redirects {
             let req = head!(&parsed)?;
-            let resp: Response = self.client
-                .request(req.into())
-                .await
-                .map(|x| x.into())?;
+            let resp: Response = self.client.request(req.into()).await.map(|x| x.into())?;
             let check = resp.check_redirect(&parsed)?;
             if let Some(new) = check {
                 debug!("Redirect: {}", new);
                 let req = head!(&new)?;
-                self.client.request(req.into()).await.map(|x| x.into()).map_err(|e| Error::NetError(e))
+                self.client
+                    .request(req.into())
+                    .await
+                    .map(|x| x.into())
+                    .map_err(|e| Error::NetError(e))
             } else {
                 Ok(resp)
             }
@@ -88,13 +92,14 @@ impl Client {
     pub async fn get(&self, url: &str) -> Result<Response> {
         let parsed = url.parse::<hyper::Uri>()?;
         if self.redirects {
-            let resp: Response = self.client
-                .get(parsed.clone())
-                .await
-                .map(|x| x.into())?;
+            let resp: Response = self.client.get(parsed.clone()).await.map(|x| x.into())?;
             let check = resp.check_redirect(&parsed)?;
             if let Some(new) = check {
-                self.client.get(new).await.map(|x| x.into()).map_err(|e| Error::NetError(e))
+                self.client
+                    .get(new)
+                    .await
+                    .map(|x| x.into())
+                    .map_err(|e| Error::NetError(e))
             } else {
                 Ok(resp)
             }
@@ -140,7 +145,12 @@ impl Response {
     pub fn check_redirect(&self, origin: &hyper::Uri) -> Result<Option<hyper::Uri>> {
         let status = self.0.status().as_u16();
         if status == 301 || status == 308 || status == 302 || status == 303 || status == 307 {
-            let loc = self.0.headers().get(LOCATION).ok_or(Error::NoLoc)?.to_str()?;
+            let loc = self
+                .0
+                .headers()
+                .get(LOCATION)
+                .ok_or(Error::NoLoc)?
+                .to_str()?;
             let uri = loc.parse::<hyper::Uri>()?;
             return if uri.host().is_some() {
                 Ok(Some(uri))
@@ -156,5 +166,4 @@ impl Response {
             Ok(None)
         }
     }
-
 }

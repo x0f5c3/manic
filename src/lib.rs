@@ -29,16 +29,20 @@
 //! }
 //! ```
 
+mod async_utils;
 mod chunk;
-mod cursor;
+mod client;
 mod downloader;
 mod error;
 mod hash;
-mod multi;
+mod io;
 
+pub use async_utils::*;
 pub use downloader::Downloader;
+pub use downloader::MultiDownloader;
 pub use error::{ManicError, Result};
 pub use hash::Hash;
 #[cfg(feature = "progress")]
 pub use indicatif::ProgressStyle;
+pub(crate) use io::MyCursor;
 pub use reqwest::{header, Client, Url};
