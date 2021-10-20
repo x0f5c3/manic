@@ -28,7 +28,6 @@ openssl-tls = ["hyper-openssl", "openssl"]
 
 [dependencies]
 tokio = { version = "^1", features = ["rt-multi-thread", "io-util", "fs", "test-util", "macros"] }
-thiserror = "1.0.22"
 url = "2.2.0"
 sha2 = "0.9.2"
 indicatif = { version = "0.16.2", optional = true }

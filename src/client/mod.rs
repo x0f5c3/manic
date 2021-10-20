@@ -2,6 +2,7 @@ mod types;
 
 use hyper::header::{CONTENT_LENGTH, LOCATION};
 use hyper::{Body, Request};
+use types::HttpClients;
 #[cfg(feature = "json")]
 use serde::de::DeserializeOwned;
 
@@ -28,19 +29,18 @@ macro_rules! head {
 /// Wrapper for [`hyper::Client`][hyper::Client]
 #[derive(Debug, Clone)]
 pub struct Client {
-    client: hyper::Client<HttpsConnector<HttpConnector>>,
+    client: HttpClients,
     redirects: bool,
 }
 
 impl Client {
     /// Construct a new client, follows redirects by default
-    pub fn new() -> Self {
-        let client = hyper::Client::builder()
-            .build::<_, Body>(hyper_rustls::HttpsConnector::with_native_roots());
-        Self {
+    pub fn new() -> Result<Self> {
+        let client = HttpClients::new()?;
+        Ok(Self {
             client,
             redirects: true,
-        }
+        })
     }
     /// Follow redirects
     pub fn follow_redirects(&mut self, yes: bool) {

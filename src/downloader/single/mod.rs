@@ -83,7 +83,7 @@ impl Downloader {
         let client = Client::new();
         let len = client.content_length(url).await?;
         debug!("Len: {}", len);
-        Self::assemble(client, url, workers, len).await
+        Self::assemble(client?, url, workers, len).await
     }
     /// Get filename from the url, returns an error if the url contains no filename
     #[instrument(skip(url),fields(URL=%url))]

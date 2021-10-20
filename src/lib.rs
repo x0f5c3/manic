@@ -42,7 +42,8 @@ pub use downloader::Downloader;
 pub use downloader::MultiDownloader;
 pub use error::{ManicError, Result};
 pub use hash::Hash;
+pub use client::Client;
 #[cfg(feature = "progress")]
 pub use indicatif::ProgressStyle;
 pub(crate) use io::MyCursor;
-pub use reqwest::{header, Client, Url};
+pub use hyper::header;

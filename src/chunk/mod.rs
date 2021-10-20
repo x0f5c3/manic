@@ -1,7 +1,7 @@
 use crate::cursor::MyCursor;
 use crate::downloader::{join_all, join_all_futures};
 use crate::header::RANGE;
-use crate::{Client, Result};
+use crate::{Client, join_all, join_all_futures, MyCursor, Result};
 use crate::{Hash, ManicError};
 use indicatif::ProgressBar;
 use rayon::prelude::*;
@@ -108,7 +108,7 @@ impl Chunk {
         pb: Option<ProgressBar>,
     ) -> Result<Self> {
         let mut resp = client
-            .get(url.to_string())
+            .get(&url)
             .header(RANGE, self.bytes.clone())
             .send()
             .await?;
