@@ -23,7 +23,7 @@ default = ["rustls-tls"]
 progress = ["indicatif"]
 json = ["serde", "serde_json"]
 rustls-tls = ["hyper-rustls"]
-openssl-tls = ["hyper-openssl", "openssl"]
+#openssl-tls = ["hyper-openssl", "openssl"]
 
 
 [dependencies]
@@ -35,9 +35,6 @@ tracing = { version = "0.1.22", features = ["log"] }
 tracing-futures = "0.2.4"
 hyper = { version = "0.14.13", features = ["client", "http1", "http2", "runtime", "stream"] }
 hyper-rustls = { version = "0.22.1", optional = true }
-hyper-openssl = { version = "0.9.1", optional = true }
-openssl = { version = "0.10.32", optional = true, features = ["vendored"] }
-http = "*"
 tokio-stream = "0.1.0"
 futures = "*"
 async-trait = "*"

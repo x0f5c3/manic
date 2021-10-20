@@ -1,9 +1,10 @@
 #![allow(dead_code)]
 use crate::chunk::ChunkVec;
 use crate::error::ManicError;
+use crate::join_all;
 use crate::Result;
-use crate::{join_all, join_all_futures};
 use crate::{Downloader, Hash};
+#[cfg(feature = "progress")]
 use indicatif::{MultiProgress, ProgressBar};
 use std::collections::HashMap;
 use std::path::Path;
@@ -43,7 +44,7 @@ impl Map {
 pub struct Downloaded {
     url: String,
     name: String,
-    data: Vec<u8>,
+    data: ChunkVec,
 }
 
 impl Downloaded {
@@ -53,9 +54,7 @@ impl Downloaded {
     pub(crate) async fn save<T: AsRef<Path>>(&self, output_dir: T) -> Result<()> {
         let output_path = output_dir.as_ref().join(Path::new(&self.name));
         let mut f = File::create(output_path).await?;
-        f.write_all(self.data.as_slice())
-            .await
-            .map_err(|x| x.into())
+        f.write_all(self.data.as_vec()).await.map_err(|x| x.into())
     }
 }
 

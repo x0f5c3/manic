@@ -1,8 +1,8 @@
-use crate::cursor::MyCursor;
-use crate::downloader::{join_all, join_all_futures};
 use crate::header::RANGE;
-use crate::{Client, join_all, join_all_futures, MyCursor, Result};
+use crate::{join_all, join_all_futures, Client, MyCursor, Result};
 use crate::{Hash, ManicError};
+use futures::StreamExt;
+#[cfg(feature = "progress")]
 use indicatif::ProgressBar;
 use rayon::prelude::*;
 use std::io::SeekFrom;
@@ -105,14 +105,14 @@ impl Chunk {
         mut self,
         client: Client,
         url: String,
-        pb: Option<ProgressBar>,
+        #[cfg(feature = "progress")] pb: Option<ProgressBar>,
     ) -> Result<Self> {
         let mut resp = client
-            .get(&url)
+            .get(&url)?
             .header(RANGE, self.bytes.clone())
             .send()
             .await?;
-        while let Some(chunk) = resp.chunk().await? {
+        while let Ok(chunk) = resp.0.into_body().next().await? {
             #[cfg(feature = "progress")]
             if let Some(bar) = &pb {
                 bar.inc(chunk.len() as u64);
@@ -144,7 +144,7 @@ impl Chunks {
         &self,
         client: Client,
         url: String,
-        pb: Option<ProgressBar>,
+        #[cfg(feature = "progress")] pb: Option<ProgressBar>,
     ) -> Result<ChunkVec> {
         let fut_vec = self
             .map(|x| {

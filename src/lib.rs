@@ -37,13 +37,14 @@ mod error;
 mod hash;
 mod io;
 
-pub use async_utils::*;
+pub(crate) use async_utils::{join_all, join_all_futures};
+pub use client::Client;
 pub use downloader::Downloader;
 pub use downloader::MultiDownloader;
 pub use error::{ManicError, Result};
 pub use hash::Hash;
-pub use client::Client;
+pub use hyper::header;
+pub(crate) use hyper::http;
 #[cfg(feature = "progress")]
 pub use indicatif::ProgressStyle;
 pub(crate) use io::MyCursor;
-pub use hyper::header;

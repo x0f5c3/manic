@@ -1,10 +1,12 @@
-use hyper::StatusCode;
+use crate::http;
+use crate::http::uri::{InvalidUri, InvalidUriParts};
 use std::error::Error;
 use std::fmt;
 use std::fmt::Formatter;
 use std::num::ParseIntError;
+use std::string::FromUtf8Error;
 use tokio::io;
-use url::{ParseError, Url};
+use url::ParseError;
 
 /// Error definition for possible errors in this crate
 #[derive(Debug, Clone)]
@@ -28,15 +30,40 @@ pub enum ManicError {
     /// Returned when the selected chunk size == 0
     BadChunkSize,
     NotFound,
+    NoLoc,
+    #[cfg(feature = "json")]
+    SerError(String),
     MultipleErrors(String),
     NoResults,
     HTTPError(String),
+    InvalidUri(String),
+    UTF8(String),
+    InvalidUriParts(String),
 }
 
 impl Error for ManicError {}
 
+#[cfg(feature = "json")]
+impl From<serde_json::Error> for ManicError {
+    fn from(e: serde_json::Error) -> Self {
+        Self::SerError(e.to_string())
+    }
+}
+
+impl From<FromUtf8Error> for ManicError {
+    fn from(e: FromUtf8Error) -> Self {
+        Self::UTF8(e.to_string())
+    }
+}
+
+impl From<InvalidUriParts> for ManicError {
+    fn from(e: InvalidUriParts) -> Self {
+        Self::InvalidUriParts(e.to_string())
+    }
+}
+
 impl From<hyper::http::Error> for ManicError {
-    fn from(e: http::Error) -> Self {
+    fn from(e: hyper::http::Error) -> Self {
         Self::HTTPError(e.to_string())
     }
 }
@@ -57,7 +84,16 @@ impl fmt::Display for ManicError {
             Self::MultipleErrors(s) => write!(f, "{}", s),
             Self::NoResults => write!(f, "No errors and no results from join_all"),
             Self::HTTPError(s) => write!(f, "HTTP error: {}", s),
+            Self::InvalidUri(s) => write!(f, "Invalid URI: {}", s),
+            Self::InvalidUriParts(s) => write!(f, "Invalid URI parts: {}", s),
+            Self::NoLoc => write!(f, "No location header found"),
         }
+    }
+}
+
+impl From<hyper::http::uri::InvalidUri> for ManicError {
+    fn from(e: InvalidUri) -> Self {
+        Self::InvalidUri(e.to_string())
     }
 }
 
