@@ -8,8 +8,6 @@ use indicatif::{MultiProgress, ProgressBar};
 use std::collections::HashMap;
 use std::path::Path;
 use std::sync::Arc;
-use tokio::fs::File;
-use tokio::io::AsyncWriteExt;
 use tokio::sync::{Mutex, MutexGuard};
 
 #[derive(Clone, Debug)]
@@ -43,19 +41,16 @@ impl Map {
 pub struct Downloaded {
     url: String,
     name: String,
-    data: Vec<u8>,
+    data: ChunkVec,
 }
 
 impl Downloaded {
-    pub(crate) fn new(url: String, name: String, data: Vec<u8>) -> Self {
+    pub(crate) fn new(url: String, name: String, data: ChunkVec) -> Self {
         Self { url, name, data }
     }
     pub(crate) async fn save<T: AsRef<Path>>(&self, output_dir: T) -> Result<()> {
         let output_path = output_dir.as_ref().join(Path::new(&self.name));
-        let mut f = File::create(output_path).await?;
-        f.write_all(self.data.as_slice())
-            .await
-            .map_err(|x| x.into())
+        self.data.save_to_file(output_path).await
     }
 }
 

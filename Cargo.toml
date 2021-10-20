@@ -31,21 +31,20 @@ url = "2.2.2"
 sha2 = "0.9.8"
 indicatif = { version = "0.16.2", optional = true }
 tracing = { version = "0.1.28", features = ["log"] }
-tracing-futures = "0.2.5"
-futures = "*"
-rayon = "*"
-tokio-rayon = "2.1.0"
+futures = "0.3.17"
+rayon = "1.5.1"
+derive_builder = "0.10.2"
 
 
 [dependencies.reqwest]
-version = "0.11.4"
+version = "0.11.6"
 default-features = false
 features = ["stream"]
 
 [dev-dependencies]
 pretty_env_logger = "0.4.0"
 log = "0.4.14"
-criterion = { version = "*", features = ["async_tokio"] }
+criterion = { version = "0.3.5", features = ["async_tokio"] }
 
 [[bench]]
 name = "remote_benchmark"

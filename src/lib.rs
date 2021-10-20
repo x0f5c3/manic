@@ -28,7 +28,8 @@
 //!     Ok(())
 //! }
 //! ```
-
+#[macro_use]
+extern crate derive_builder;
 mod chunk;
 mod cursor;
 mod downloader;

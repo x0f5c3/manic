@@ -14,9 +14,10 @@ use tokio::io::AsyncWriteExt;
 use tokio::task::JoinHandle;
 use tracing::{debug, instrument};
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Builder)]
 pub struct Downloader {
     filename: String,
+    #[builder(default, setter(skip))]
     client: Client,
     workers: u8,
     url: reqwest::Url,
@@ -160,17 +161,6 @@ impl Downloader {
         let client = self.client.clone();
         #[cfg(feature = "progress")]
         let pb = self.pb.clone();
-        // let hndl_vec = chnks
-        //     .into_iter()
-        //     .map(move |x| {
-        //         tokio::spawn(x.download(&client, url.to_string(),
-        //         #[cfg(feature = "progress")]
-        //                 pb,
-        //         ))
-        //     })
-        //     .collect::<Vec<_>>();
-        // let res: Vec<Chunk> = join_all(hndl_vec).await?;
-        // let result = ChunkVec::from_vec(res).await?;
         let result = chnks.download(client, url.to_string(), pb).await?;
         if let Some(hash) = &self.hash {
             result.verify(hash).await?;
@@ -180,11 +170,7 @@ impl Downloader {
     }
     pub(crate) async fn multi_download(self) -> Result<Downloaded> {
         let res = self.download().await?;
-        Ok(Downloaded::new(
-            self.get_url(),
-            self.filename,
-            res.as_vec().await?,
-        ))
+        Ok(Downloaded::new(self.get_url(), self.filename, res))
     }
     /// Used to download, save to a file and verify against a SHA256 sum,
     /// returns an error if the connection fails or if the sum doesn't match the one provided
