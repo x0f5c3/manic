@@ -34,6 +34,7 @@ tracing = { version = "0.1.28", features = ["log"] }
 futures = "0.3.17"
 rayon = "1.5.1"
 derive_builder = "0.10.2"
+bytes = "*"
 
 
 [dependencies.reqwest]

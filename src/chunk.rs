@@ -3,6 +3,7 @@ use crate::downloader::{join_all, join_all_futures};
 use crate::header::RANGE;
 use crate::{Client, Result};
 use crate::{Hash, ManicError};
+use futures::StreamExt;
 use indicatif::ProgressBar;
 use rayon::prelude::*;
 use std::io::SeekFrom;
@@ -107,18 +108,31 @@ impl Chunk {
         url: String,
         pb: Option<ProgressBar>,
     ) -> Result<Self> {
-        let mut resp = client
+        let resp = client
             .get(url.to_string())
             .header(RANGE, self.bytes.clone())
             .send()
             .await?;
-        while let Some(chunk) = resp.chunk().await? {
-            #[cfg(feature = "progress")]
-            if let Some(bar) = &pb {
-                bar.inc(chunk.len() as u64);
-            }
-            self.buf.append(&mut chunk.to_vec());
-        }
+        let mut res: Vec<u8> = resp
+            .bytes_stream()
+            .filter_map(
+                |x: std::result::Result<bytes::Bytes, reqwest::Error>| async {
+                    if let Ok(byt) = x {
+                        #[cfg(feature = "progress")]
+                        if let Some(bar) = &pb {
+                            bar.inc(byt.len() as u64);
+                        }
+                        return Some(byt.to_vec());
+                    }
+                    None
+                },
+            )
+            .collect::<Vec<Vec<u8>>>()
+            .await
+            .into_iter()
+            .flatten()
+            .collect();
+        self.buf.append(&mut res);
         Ok(self)
     }
 }
