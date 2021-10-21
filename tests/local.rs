@@ -1,6 +1,6 @@
 use log::LevelFilter;
 use manic::{Downloader, Hash};
-#[tokio::test]
+#[actix_rt::test]
 async fn file_test_local() -> manic::Result<()> {
     pretty_env_logger::formatted_builder()
         .filter(Some("manic"), LevelFilter::Debug)

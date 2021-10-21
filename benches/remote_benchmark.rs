@@ -1,8 +1,28 @@
-use criterion::{criterion_group, criterion_main, BenchmarkId, Criterion};
+use std::error::Error;
+use std::future::Future;
+use criterion::{criterion_group, criterion_main, BenchmarkId, Criterion, async_executor::AsyncExecutor};
 use manic::Downloader;
 use manic::Hash;
 use std::time::Duration;
-use tokio::runtime::Builder;
+use actix_rt::Runtime;
+
+struct CustomRuntime {
+    runtime: Runtime,
+}
+
+impl CustomRuntime {
+    fn new() -> Result<Self, Box<dyn Error>> {
+        Ok(Self{
+            runtime: Runtime::new()?
+        })
+    }
+}
+
+impl AsyncExecutor for CustomRuntime {
+    fn block_on<T>(&self, future: impl Future<Output = T>) -> T {
+        self.runtime.block_on(future)
+    }
+}
 
 async fn bench_remote(workers: u8) -> manic::Result<()> {
     let mut dl = Downloader::new(
@@ -25,11 +45,7 @@ fn outer_bench(c: &mut Criterion) {
             workers,
             |b, s| {
                 b.to_async(
-                    Builder::new_multi_thread()
-                        .worker_threads(10)
-                        .enable_all()
-                        .build()
-                        .unwrap(),
+                    CustomRuntime::new().unwrap()
                 )
                 .iter(|| bench_remote(*s))
             },
@@ -39,7 +55,7 @@ fn outer_bench(c: &mut Criterion) {
 
 criterion_group! {
     name = benches;
-    config = Criterion::default().measurement_time(Duration::from_secs(60));
+    config = Criterion::default().measurement_time(Duration::from_secs(60)).sample_size(40);
     targets = outer_bench
 }
 criterion_main!(benches);

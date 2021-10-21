@@ -6,21 +6,23 @@ use crate::ManicError;
 use crate::Result;
 use futures::Future;
 use indicatif::ProgressBar;
-use reqwest::header::{CONTENT_LENGTH, RANGE};
-use reqwest::Client;
+use awc::http::header::{CONTENT_LENGTH, RANGE};
 use std::path::Path;
+use std::sync::Arc;
 use tokio::fs::File;
 use tokio::io::AsyncWriteExt;
 use tokio::task::JoinHandle;
 use tracing::{debug, instrument};
 
-#[derive(Debug, Clone, Builder)]
+pub type Client = Arc<awc::Client>;
+
+#[derive(Clone, Builder)]
 pub struct Downloader {
     filename: String,
     #[builder(default, setter(skip))]
     client: Client,
     workers: u8,
-    url: reqwest::Url,
+    url: awc::http::Uri,
     hash: Option<Hash>,
     length: u64,
     chunks: Chunks,
@@ -47,7 +49,7 @@ impl Downloader {
         length: u64,
         client: Client,
     ) -> Result<Self> {
-        let parsed = reqwest::Url::parse(url)?;
+        let parsed = url.parse::<awc::http::Uri>()?;
         if length == 0 {
             return Err(ManicError::NoLen);
         }
@@ -76,8 +78,12 @@ impl Downloader {
         });
     }
     pub async fn new_manual(url: &str, workers: u8, length: u64) -> Result<Self> {
-        let client = Client::new();
+        let client = Self::assemble_client();
         Self::assemble_downloader(url, workers, length, client).await
+    }
+    pub fn assemble_client() -> Client {
+        let conn = awc::Connector::new();
+        Client::new(awc::Client::builder().connector(conn).finish())
     }
     /// Create a new downloader
     ///
@@ -98,13 +104,13 @@ impl Downloader {
     /// # }
     /// ```
     pub async fn new(url: &str, workers: u8) -> Result<Self> {
-        let client = Client::new();
+        let client = Self::assemble_client();
         let length = content_length(&client, url).await?;
         Self::assemble_downloader(url, workers, length, client).await
     }
-    pub(crate) fn url_to_filename(url: &reqwest::Url) -> Result<String> {
-        url.path_segments()
-            .and_then(|segments| segments.last())
+    pub(crate) fn url_to_filename(url: &awc::http::Uri) -> Result<String> {
+        url.path().split('/')
+            .last()
             .and_then(|name| {
                 if name.is_empty() {
                     None
@@ -229,7 +235,7 @@ async fn content_length(client: &Client, url: &str) -> Result<u64> {
             .parse::<u64>()
             .map_err(|e| e.into())
     } else {
-        let resp = client.get(url).header(RANGE, "0-0").send().await?;
+        let resp = client.get(url).insert_header((RANGE, "0-0")).send().await?;
         debug!("Response code: {}", resp.status());
         debug!("Received GET 1B response: {:?}", resp.headers());
         resp.headers()

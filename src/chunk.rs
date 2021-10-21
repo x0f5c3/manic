@@ -1,7 +1,8 @@
 use crate::cursor::MyCursor;
 use crate::downloader::{join_all, join_all_futures};
-use crate::header::RANGE;
-use crate::{Client, Result};
+use awc::http::header::RANGE;
+use crate::Result;
+use crate::downloader::Client;
 use crate::{Hash, ManicError};
 use futures::StreamExt;
 use indicatif::ProgressBar;
@@ -37,25 +38,22 @@ impl ChunkVec {
         for i in self.chunks.iter() {
             let f = output.try_clone().await?;
             let c = i.clone();
-            fut_vec.push(tokio::spawn(c.save(f)))
+            fut_vec.push(c.save(f))
         }
-        join_all(fut_vec).await?;
+        join_all_futures(fut_vec).await?;
         output.sync_all().await?;
         Ok(())
     }
-    pub async fn as_vec(&self) -> Result<Vec<u8>> {
-        let curs = MyCursor::new(Vec::new());
-        let fut_vec = self
-            .chunks
-            .iter()
-            .par_bridge()
-            .map(|x| write_cursor(curs.clone(), x))
-            .collect::<Vec<_>>();
-        join_all_futures(fut_vec).await?;
-        Ok(curs.as_inner().await)
-    }
+    // pub async fn as_vec(&self) -> Vec<u8> {
+    //     self.chunks
+    //         .iter()
+    //         .par_bridge()
+    //         .map(|x| x.buf.to_vec())
+    //         .flatten().collect::<Vec<u8>>()
+    // }
     pub(crate) async fn verify(&self, hash: &Hash) -> Result<()> {
-        hash.verify(self.as_vec().await?.as_slice())
+        let input: Vec<u8> = self.chunks.iter().par_bridge().map(|x| x.buf.to_vec()).flatten().collect();
+        hash.verify(input.as_slice())
     }
 }
 
@@ -110,13 +108,12 @@ impl Chunk {
     ) -> Result<Self> {
         let resp = client
             .get(url.to_string())
-            .header(RANGE, self.bytes.clone())
+            .insert_header((RANGE, self.bytes.clone()))
             .send()
             .await?;
         let mut res: Vec<u8> = resp
-            .bytes_stream()
             .filter_map(
-                |x: std::result::Result<bytes::Bytes, reqwest::Error>| async {
+                |x: std::result::Result<bytes::Bytes, awc::error::PayloadError>| async {
                     if let Ok(byt) = x {
                         #[cfg(feature = "progress")]
                         if let Some(bar) = &pb {

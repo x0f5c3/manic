@@ -5,6 +5,7 @@ use std::error::Error;
 use std::fmt;
 use std::fmt::Formatter;
 use std::num::ParseIntError;
+use awc::error::{InvalidUrl, SendRequestError};
 use tokio::io;
 use url::ParseError;
 
@@ -37,6 +38,7 @@ pub enum ManicError {
     NotFound,
     MultipleErrors(String),
     NoResults,
+    AwcError(String)
 }
 
 impl Error for ManicError {}
@@ -77,7 +79,20 @@ impl fmt::Display for ManicError {
             Self::NotFound => write!(f, "Downloader not found"),
             Self::MultipleErrors(s) => write!(f, "{}", s),
             Self::NoResults => write!(f, "No errors and no results from join_all"),
+            Self::AwcError(e) => write!(f, "AWC error: {}", e),
         }
+    }
+}
+
+impl From<awc::http::uri::InvalidUri> for ManicError {
+    fn from(e: awc::http::uri::InvalidUri) -> Self {
+        Self::UrlParseError(format!("{}", e))
+    }
+}
+
+impl From<awc::error::SendRequestError> for ManicError {
+    fn from(e: SendRequestError) -> Self {
+        Self::AwcError(format!("{}", e))
     }
 }
 

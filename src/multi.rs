@@ -1,6 +1,6 @@
 #![allow(dead_code)]
 use crate::chunk::ChunkVec;
-use crate::downloader::join_all;
+use crate::downloader::{join_all, join_all_futures};
 use crate::error::ManicError;
 use crate::Result;
 use crate::{Downloader, Hash};
@@ -10,7 +10,7 @@ use std::path::Path;
 use std::sync::Arc;
 use tokio::sync::{Mutex, MutexGuard};
 
-#[derive(Clone, Debug)]
+#[derive(Clone)]
 pub struct Map(Arc<Mutex<HashMap<String, Downloader>>>);
 
 impl Map {
@@ -54,7 +54,6 @@ impl Downloaded {
     }
 }
 
-#[derive(Debug)]
 pub struct MultiDownloader {
     downloaders: Map,
     #[cfg(feature = "progress")]
@@ -98,9 +97,9 @@ impl MultiDownloader {
         let lock = self.downloaders.lock().await;
         for v in lock.values() {
             let c = v.clone();
-            fut_vec.push(tokio::spawn(c.multi_download()));
+            fut_vec.push(c.multi_download());
         }
-        Ok(join_all(fut_vec).await?.to_vec())
+        Ok(join_all_futures(fut_vec).await?.to_vec())
     }
     pub async fn download_one(&self, url: String) -> Result<ChunkVec> {
         let chosen = self.downloaders.get(&url).await?;
