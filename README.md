@@ -33,10 +33,10 @@ This crate is a work in progress
 use manic::Downloader;
 
 #[tokio::main]
-async fn main() -> Result<(), manic::Error> {
+fn main() -> Result<(), manic::Error> {
     let number_of_concurrent_tasks: u8 = 5;
-    let client = Downloader::new("https://crates.io", number_of_concurrent_tasks).await?;
-    let _ = client.download().await?;
+    let client = Downloader::new("https://crates.io", number_of_concurrent_tasks)?;
+    let _ = client.download()?;
     Ok(())
 }
 ```

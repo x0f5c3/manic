@@ -1,16 +1,16 @@
-use crate::cursor::MyCursor;
-use crate::downloader::{join_all, join_all_futures};
+use crate::downloader::join_all;
 use crate::header::RANGE;
 use crate::{Client, Result};
 use crate::{Hash, ManicError};
-use futures::StreamExt;
+use bytes::Bytes;
 use indicatif::ProgressBar;
 use rayon::prelude::*;
+use std::fs::File;
 use std::io::SeekFrom;
+use std::io::{Seek, Write};
 use std::path::Path;
 use std::sync::Arc;
-use tokio::fs::File;
-use tokio::io::{AsyncSeekExt, AsyncWriteExt};
+use std::thread;
 use tracing::{info, instrument};
 
 /// Iterator over remote file chunks that returns a formatted [`RANGE`][reqwest::header::RANGE] header value
@@ -28,30 +28,29 @@ pub struct ChunkVec {
 }
 
 impl ChunkVec {
-    pub async fn save_to_file<T: AsRef<Path>>(&self, path: T) -> Result<()> {
-        let f = File::create(path).await?;
-        self.save(f).await
+    pub fn save_to_file<T: AsRef<Path>>(&self, path: T) -> Result<()> {
+        let f = File::create(path)?;
+        self.save(f)
     }
-    pub(crate) async fn save(&self, output: File) -> Result<()> {
+    pub(crate) fn save(&self, output: File) -> Result<()> {
         let mut fut_vec = Vec::new();
         for i in self.chunks.iter() {
-            let f = output.try_clone().await?;
+            let f = output.try_clone()?;
             let c = i.clone();
-            fut_vec.push(tokio::spawn(c.save(f)))
+            fut_vec.push(thread::spawn(|| c.save(f)))
         }
-        join_all(fut_vec).await?;
-        output.sync_all().await?;
+        join_all(fut_vec)?;
+        output.sync_all()?;
         Ok(())
     }
-    pub async fn to_vec(&self) -> Vec<u8> {
-        self
-            .chunks
+    pub fn to_vec(&self) -> Vec<u8> {
+        self.chunks
             .iter()
             .flat_map(|x| x.buf.to_vec())
             .collect::<Vec<u8>>()
     }
-    pub(crate) async fn verify(&self, mut hash: Hash) -> Result<()> {
-        self.chunks.iter().for_each(|x| hash.update(x.buf.as_slice()));
+    pub(crate) fn verify(&self, mut hash: Hash) -> Result<()> {
+        self.chunks.iter().for_each(|x| hash.update(x.buf.as_ref()));
         hash.verify()
     }
 }
@@ -64,19 +63,9 @@ impl From<Vec<Chunk>> for ChunkVec {
         }
     }
 }
-#[instrument(skip(cur, chunk), fields(low=%chunk.as_ref().low, hi=%chunk.as_ref().hi, range=%chunk.as_ref().bytes, pos=%chunk.as_ref().pos, len=%chunk.as_ref().len))]
-async fn write_cursor<C: AsRef<Chunk>>(cur: MyCursor<Vec<u8>>, chunk: C) -> Result<()> {
-    let mut lock = cur.lock().await;
-    lock.seek(SeekFrom::Start(chunk.as_ref().low)).await?;
-    info!("Seeked");
-    let n = lock.write(chunk.as_ref().buf.as_slice()).await?;
-    info!("Written {} bytes", n);
-    Ok(())
-}
-
 #[derive(Debug, Clone)]
 pub struct Chunk {
-    pub buf: Vec<u8>,
+    pub buf: Bytes,
     pub low: u64,
     pub hi: u64,
     pub pos: u64,
@@ -92,45 +81,30 @@ impl AsRef<Chunk> for Chunk {
 
 impl Chunk {
     #[instrument(skip(self, output), fields(low=%self.low, hi=%self.hi, range=%self.bytes, pos=%self.pos))]
-    pub(crate) async fn save(self, mut output: File) -> Result<()> {
-        output.seek(SeekFrom::Start(self.low)).await?;
+    pub(crate) fn save(self, mut output: File) -> Result<()> {
+        output.seek(SeekFrom::Start(self.low))?;
         info!("Seeked");
-        let n = output.write(self.buf.as_slice()).await?;
+        let n = output.write(self.buf.as_ref())?;
         info!("Written {} bytes", n);
         Ok(())
     }
     #[instrument(skip(self, client, pb), fields(range = %self.bytes))]
-    pub(crate) async fn download(
+    pub(crate) fn download(
         mut self,
         client: Client,
         url: String,
-        pb: Option<ProgressBar>,
+        #[cfg(feature = "progress")] pb: Option<ProgressBar>,
     ) -> Result<Self> {
         let resp = client
             .get(url.to_string())
             .header(RANGE, self.bytes.clone())
-            .send()
-            .await?;
-        let mut res: Vec<u8> = resp
-            .bytes_stream()
-            .filter_map(
-                |x: std::result::Result<bytes::Bytes, reqwest::Error>| async {
-                    if let Ok(byt) = x {
-                        #[cfg(feature = "progress")]
-                        if let Some(bar) = &pb {
-                            bar.inc(byt.len() as u64);
-                        }
-                        return Some(byt.to_vec());
-                    }
-                    None
-                },
-            )
-            .collect::<Vec<Vec<u8>>>()
-            .await
-            .into_iter()
-            .flatten()
-            .collect();
-        self.buf.append(&mut res);
+            .send()?;
+        let res = resp.bytes()?;
+        #[cfg(feature = "progress")]
+        if let Some(bar) = pb {
+            bar.inc(res.len() as u64);
+        }
+        self.buf = res;
         Ok(self)
     }
 }
@@ -152,23 +126,31 @@ impl Chunks {
             current_pos: 1,
         })
     }
-    pub async fn download(
+    pub fn download(
         &self,
         client: Client,
         url: String,
         pb: Option<ProgressBar>,
     ) -> Result<ChunkVec> {
-        let fut_vec = self
+        let chnk_vec = self.collect::<Vec<Chunk>>();
+        let fut_vec = chnk_vec
+            .into_par_iter()
             .map(|x| {
-                x.download(
-                    client.clone(),
-                    url.clone(),
-                    #[cfg(feature = "progress")]
-                    pb.clone(),
-                )
+                let client1 = client.clone();
+                let url1 = url.clone();
+                #[cfg(feature = "progress")]
+                let pb1 = pb.clone();
+                thread::spawn(|| {
+                    x.download(
+                        client1,
+                        url1,
+                        #[cfg(feature = "progress")]
+                        pb1,
+                    )
+                })
             })
             .collect::<Vec<_>>();
-        let list = join_all_futures(fut_vec).await?;
+        let list = join_all(fut_vec)?;
         Ok(ChunkVec::from(list))
     }
 }
@@ -184,7 +166,7 @@ impl Iterator for Chunks {
             let chunk_len = (self.low - 1) - prev_low;
             let bytes = format!("bytes={}-{}", prev_low, self.low - 1);
             let res = Chunk {
-                buf: Vec::new(),
+                buf: Bytes::new(),
                 low: prev_low,
                 hi: self.low - 1,
                 len: chunk_len,

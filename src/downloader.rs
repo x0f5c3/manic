@@ -4,14 +4,15 @@ use crate::multi::Downloaded;
 use crate::Hash;
 use crate::ManicError;
 use crate::Result;
-use futures::Future;
 use indicatif::ProgressBar;
+use reqwest::blocking::Client;
 use reqwest::header::{CONTENT_LENGTH, RANGE};
-use reqwest::Client;
+use std::fs::File;
+use std::io::Write;
 use std::path::Path;
-use tokio::fs::File;
-use tokio::io::AsyncWriteExt;
-use tokio::task::JoinHandle;
+// use tokio::task::JoinHandle;
+use rayon::prelude::*;
+use std::thread::JoinHandle;
 use tracing::{debug, instrument};
 
 #[derive(Debug, Clone, Builder)]
@@ -41,12 +42,7 @@ impl Downloader {
     pub fn filename(&self) -> &str {
         &self.filename
     }
-    async fn assemble_downloader(
-        url: &str,
-        workers: u8,
-        length: u64,
-        client: Client,
-    ) -> Result<Self> {
+    fn assemble_downloader(url: &str, workers: u8, length: u64, client: Client) -> Result<Self> {
         let parsed = reqwest::Url::parse(url)?;
         if length == 0 {
             return Err(ManicError::NoLen);
@@ -75,9 +71,9 @@ impl Downloader {
             pb: None,
         });
     }
-    pub async fn new_manual(url: &str, workers: u8, length: u64) -> Result<Self> {
+    pub fn new_manual(url: &str, workers: u8, length: u64) -> Result<Self> {
         let client = Client::new();
-        Self::assemble_downloader(url, workers, length, client).await
+        Self::assemble_downloader(url, workers, length, client)
     }
     /// Create a new downloader
     ///
@@ -90,17 +86,17 @@ impl Downloader {
     /// ```no_run
     /// use manic::Downloader;
     /// # #[tokio::main]
-    /// # async fn main() -> Result<(), manic::ManicError> {
+    /// # fn main() -> Result<(), manic::ManicError> {
     ///     // If only one TLS feature is enabled
-    ///     let downloader = Downloader::new("https://crates.io", 5).await?;
+    ///     let downloader = Downloader::new("https://crates.io", 5)?;
     ///
     /// # Ok(())
     /// # }
     /// ```
-    pub async fn new(url: &str, workers: u8) -> Result<Self> {
+    pub fn new(url: &str, workers: u8) -> Result<Self> {
         let client = Client::new();
-        let length = content_length(&client, url).await?;
-        Self::assemble_downloader(url, workers, length, client).await
+        let length = content_length(&client, url)?;
+        Self::assemble_downloader(url, workers, length, client)
     }
     pub(crate) fn url_to_filename(url: &reqwest::Url) -> Result<String> {
         url.path_segments()
@@ -146,14 +142,14 @@ impl Downloader {
     /// use manic::Downloader;
     /// use manic::ManicError;
     /// # #[tokio::main]
-    /// # async fn main() -> Result<(), ManicError> {
-    /// let client = Downloader::new("https://crates.io", 5).await?;
-    /// let result = client.download().await?;
+    /// # fn main() -> Result<(), ManicError> {
+    /// let client = Downloader::new("https://crates.io", 5)?;
+    /// let result = client.download()?;
     /// # Ok(())
     /// # }
     /// ```
     #[instrument(skip(self), fields(URL=%self.url, tasks=%self.workers))]
-    pub async fn download(&self) -> Result<ChunkVec> {
+    pub fn download(&self) -> Result<ChunkVec> {
         let mb = &self.length / 1000000;
         debug!("File size: {}MB", mb);
         let chnks = self.chunks;
@@ -161,15 +157,15 @@ impl Downloader {
         let client = self.client.clone();
         #[cfg(feature = "progress")]
         let pb = self.pb.clone();
-        let result = chnks.download(client, url.to_string(), pb).await?;
+        let result = chnks.download(client, url.to_string(), pb)?;
         if let Some(hash) = &self.hash {
-            result.verify(hash.clone()).await?;
+            result.verify(hash.clone())?;
             debug!("Compared");
         }
         Ok(result)
     }
-    pub(crate) async fn multi_download(self) -> Result<Downloaded> {
-        let res = self.download().await?;
+    pub(crate) fn multi_download(self) -> Result<Downloaded> {
+        let res = self.download()?;
         Ok(Downloaded::new(self.get_url(), self.filename, res))
     }
     /// Used to download, save to a file and verify against a SHA256 sum,
@@ -186,16 +182,16 @@ impl Downloader {
     /// use manic::ManicError;
     /// use manic::Hash;
     /// #[tokio::main]
-    /// async fn main() -> Result<(), ManicError> {
+    /// fn main() -> Result<(), ManicError> {
     ///     let hash = Hash::new_sha256("039058c6f2c0cb492c533b0a4d14ef77cc0f78abccced5287d84a1a2011cfb81".to_string());
-    ///     let client = Downloader::new("https://crates.io", 5).await?.verify(hash);
-    ///     client.download_and_save("~/Downloads").await?;
+    ///     let client = Downloader::new("https://crates.io", 5)?.verify(hash);
+    ///     client.download_and_save("~/Downloads")?;
     ///     Ok(())
     ///  }
     /// ```
     ///
     #[instrument(skip(self))]
-    pub async fn download_and_save(&self, path: &str) -> Result<()> {
+    pub fn download_and_save(&self, path: &str) -> Result<()> {
         let mut result = {
             let original_path = Path::new(path);
             let file_path = if original_path.is_dir() {
@@ -203,20 +199,20 @@ impl Downloader {
             } else {
                 original_path.to_path_buf()
             };
-            File::create(file_path).await?
+            File::create(file_path)?
         };
-        let data = self.download().await?;
-        let c = result.try_clone().await?;
-        data.save(c).await?;
-        result.sync_all().await?;
-        result.flush().await?;
+        let data = self.download()?;
+        let c = result.try_clone()?;
+        data.save(c)?;
+        result.sync_all()?;
+        result.flush()?;
         Ok(())
     }
 }
 
 #[instrument(skip(client, url), fields(URL=%url))]
-async fn content_length(client: &Client, url: &str) -> Result<u64> {
-    let resp = client.head(url).send().await?;
+fn content_length(client: &Client, url: &str) -> Result<u64> {
+    let resp = client.head(url).send()?;
     debug!("Response code: {}", resp.status());
     debug!("Received HEAD response: {:?}", resp.headers());
     let len = resp
@@ -229,7 +225,7 @@ async fn content_length(client: &Client, url: &str) -> Result<u64> {
             .parse::<u64>()
             .map_err(|e| e.into())
     } else {
-        let resp = client.get(url).header(RANGE, "0-0").send().await?;
+        let resp = client.get(url).header(RANGE, "0-0").send()?;
         debug!("Response code: {}", resp.status());
         debug!("Received GET 1B response: {:?}", resp.headers());
         resp.headers()
@@ -241,37 +237,17 @@ async fn content_length(client: &Client, url: &str) -> Result<u64> {
     }
 }
 
-pub(crate) async fn join_all<T: Clone>(i: Vec<JoinHandle<Result<T>>>) -> Result<Vec<T>> {
-    let results = futures::future::join_all(i)
-        .await
-        .into_iter()
+pub(crate) fn join_all<T: Clone + Send>(i: Vec<JoinHandle<Result<T>>>) -> Result<Vec<T>> {
+    let (successful, errs): (Vec<Result<T>>, Vec<Result<T>>) = i
+        .into_par_iter()
+        .map(|x| x.join())
         .filter_map(|x| x.ok())
-        .collect::<Vec<_>>();
-    let errs = results
-        .iter()
-        .filter_map(|x| x.as_ref().err())
-        .cloned()
-        .collect::<Vec<_>>();
-    let successful = results
-        .iter()
-        .filter_map(|x| x.as_ref().ok())
-        .cloned()
-        .collect::<Vec<T>>();
-    check_err(errs, successful)
+        .partition(|x| x.is_ok());
+    check_err(
+        errs.into_par_iter().filter_map(|x| x.err()).collect(),
+        successful.into_par_iter().filter_map(|x| x.ok()).collect(),
+    )
 }
-pub(crate) async fn join_all_futures<T: Clone, F: Future<Output = Result<T>>>(
-    i: Vec<F>,
-) -> Result<Vec<T>> {
-    let res = futures::future::join_all(i).await;
-    let errs = res
-        .iter()
-        .filter_map(|x| x.as_ref().err())
-        .cloned()
-        .collect::<Vec<ManicError>>();
-    let successful = res.into_iter().filter_map(|x| x.ok()).collect::<Vec<T>>();
-    check_err(errs, successful)
-}
-
 pub(crate) fn check_err<T: Clone>(err: Vec<ManicError>, good: Vec<T>) -> Result<Vec<T>> {
     if !err.is_empty() && good.is_empty() {
         Err(err.into())
