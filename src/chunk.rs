@@ -43,24 +43,22 @@ impl ChunkVec {
         output.sync_all().await?;
         Ok(())
     }
-    pub async fn as_vec(&self) -> Result<Vec<u8>> {
-        let curs = MyCursor::new(Vec::new());
-        let fut_vec = self
+    pub async fn to_vec(&self) -> Vec<u8> {
+        self
             .chunks
             .iter()
-            .par_bridge()
-            .map(|x| write_cursor(curs.clone(), x))
-            .collect::<Vec<_>>();
-        join_all_futures(fut_vec).await?;
-        Ok(curs.as_inner().await)
+            .flat_map(|x| x.buf.to_vec())
+            .collect::<Vec<u8>>()
     }
-    pub(crate) async fn verify(&self, hash: &Hash) -> Result<()> {
-        hash.verify(self.as_vec().await?.as_slice())
+    pub(crate) async fn verify(&self, mut hash: Hash) -> Result<()> {
+        self.chunks.iter().for_each(|x| hash.update(x.buf.as_slice()));
+        hash.verify()
     }
 }
 
 impl From<Vec<Chunk>> for ChunkVec {
-    fn from(v: Vec<Chunk>) -> Self {
+    fn from(mut v: Vec<Chunk>) -> Self {
+        v.par_sort_unstable_by(|a, b| a.pos.cmp(&b.pos));
         Self {
             chunks: Arc::new(v),
         }

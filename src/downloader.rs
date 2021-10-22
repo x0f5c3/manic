@@ -163,7 +163,7 @@ impl Downloader {
         let pb = self.pb.clone();
         let result = chnks.download(client, url.to_string(), pb).await?;
         if let Some(hash) = &self.hash {
-            result.verify(hash).await?;
+            result.verify(hash.clone()).await?;
             debug!("Compared");
         }
         Ok(result)
@@ -187,7 +187,7 @@ impl Downloader {
     /// use manic::Hash;
     /// #[tokio::main]
     /// async fn main() -> Result<(), ManicError> {
-    ///     let hash = Hash::SHA256("039058c6f2c0cb492c533b0a4d14ef77cc0f78abccced5287d84a1a2011cfb81".to_string());
+    ///     let hash = Hash::new_sha256("039058c6f2c0cb492c533b0a4d14ef77cc0f78abccced5287d84a1a2011cfb81".to_string());
     ///     let client = Downloader::new("https://crates.io", 5).await?.verify(hash);
     ///     client.download_and_save("~/Downloads").await?;
     ///     Ok(())
