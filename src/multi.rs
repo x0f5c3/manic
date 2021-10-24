@@ -2,7 +2,7 @@
 use crate::chunk::ChunkVec;
 use crate::downloader::join_all;
 use crate::error::ManicError;
-use crate::Result;
+use crate::{ProgressStyle, Result};
 use crate::{Downloader, Hash};
 use indicatif::{MultiProgress, ProgressBar};
 use std::collections::HashMap;
@@ -12,6 +12,12 @@ use tokio::sync::{Mutex, MutexGuard};
 
 #[derive(Clone, Debug)]
 pub struct Map(Arc<Mutex<HashMap<String, Downloader>>>);
+
+impl Default for Map {
+    fn default() -> Self {
+        Self(Arc::new(Mutex::new(HashMap::new())))
+    }
+}
 
 impl Map {
     pub(crate) fn new() -> Self {
@@ -54,18 +60,22 @@ impl Downloaded {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Builder)]
 pub struct MultiDownloader {
+    #[builder(default)]
     downloaders: Map,
+    #[builder(default, setter(skip))]
     #[cfg(feature = "progress")]
-    progress: Option<MultiProgress>,
+    progress: Option<Arc<MultiProgress>>,
+    #[cfg(feature = "progress")]
+    progress_style: Option<ProgressStyle>,
 }
 
 impl MultiDownloader {
     pub async fn new(progress: bool) -> MultiDownloader {
         #[cfg(feature = "progress")]
         let pb = if progress {
-            Some(MultiProgress::new())
+            Some(Arc::new(MultiProgress::new()))
         } else {
             None
         };
@@ -73,6 +83,8 @@ impl MultiDownloader {
             downloaders: Map::new(),
             #[cfg(feature = "progress")]
             progress: pb,
+            #[cfg(feature = "progress")]
+            progress_style: None,
         }
     }
     pub async fn add(&mut self, url: String, workers: u8) -> Result<()> {
