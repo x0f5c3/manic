@@ -43,14 +43,15 @@ impl ChunkVec {
         Ok(())
     }
     pub async fn to_vec(&self) -> Vec<u8> {
-        self
-            .chunks
+        self.chunks
             .iter()
             .flat_map(|x| x.buf.to_vec())
             .collect::<Vec<u8>>()
     }
     pub(crate) async fn verify(&self, mut hash: Hash) -> Result<()> {
-        self.chunks.iter().for_each(|x| hash.update(x.buf.as_slice()));
+        self.chunks
+            .iter()
+            .for_each(|x| hash.update(x.buf.as_slice()));
         hash.verify()
     }
 }

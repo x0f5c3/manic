@@ -2,8 +2,8 @@
 use crate::chunk::ChunkVec;
 use crate::downloader::join_all;
 use crate::error::ManicError;
-use crate::{ProgressStyle, Result};
 use crate::{Downloader, Hash};
+use crate::{ProgressStyle, Result};
 use indicatif::{MultiProgress, ProgressBar};
 use std::collections::HashMap;
 use std::path::Path;

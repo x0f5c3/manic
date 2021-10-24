@@ -8,18 +8,21 @@ use tracing::debug;
 #[derive(Debug, Clone)]
 pub enum Hash {
     /// Sha224 sum
-    SHA224((Sha224,String)),
+    SHA224((Sha224, String)),
     /// Sha256 sum
-    SHA256((Sha256,String)),
+    SHA256((Sha256, String)),
     /// Sha384 sum
-    SHA384((Sha384,String)),
+    SHA384((Sha384, String)),
     /// Sha512 sum
-    SHA512((Sha512,String)),
+    SHA512((Sha512, String)),
 }
 impl fmt::Display for Hash {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self::SHA224((_, val)) | Self::SHA256((_, val)) | Self::SHA384((_, val)) | Self::SHA512((_, val)) => {
+            Self::SHA224((_, val))
+            | Self::SHA256((_, val))
+            | Self::SHA384((_, val))
+            | Self::SHA512((_, val)) => {
                 write!(f, "{}", val)
             }
         }
