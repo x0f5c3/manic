@@ -1,3 +1,8 @@
+# v0.7.0 (2021-10-25)
+- [Improved] Concurrency performance
+- [Added] benchmarks, multidownloaders
+- [Improved] IO performance
+
 # v0.6.3 (2021-10-4)
 - [Fixed] Content length issues
 # v0.6.2 (2021-5-5)
