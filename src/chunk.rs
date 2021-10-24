@@ -1,4 +1,3 @@
-use crate::cursor::MyCursor;
 use crate::downloader::{join_all, join_all_futures};
 use crate::header::RANGE;
 use crate::{Client, Result};
@@ -63,15 +62,6 @@ impl From<Vec<Chunk>> for ChunkVec {
             chunks: Arc::new(v),
         }
     }
-}
-#[instrument(skip(cur, chunk), fields(low=%chunk.as_ref().low, hi=%chunk.as_ref().hi, range=%chunk.as_ref().bytes, pos=%chunk.as_ref().pos, len=%chunk.as_ref().len))]
-async fn write_cursor<C: AsRef<Chunk>>(cur: MyCursor<Vec<u8>>, chunk: C) -> Result<()> {
-    let mut lock = cur.lock().await;
-    lock.seek(SeekFrom::Start(chunk.as_ref().low)).await?;
-    info!("Seeked");
-    let n = lock.write(chunk.as_ref().buf.as_slice()).await?;
-    info!("Written {} bytes", n);
-    Ok(())
 }
 
 #[derive(Debug, Clone)]
