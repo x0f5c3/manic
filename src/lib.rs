@@ -1,6 +1,6 @@
-//! Fast and simple async downloads
+//! Fast and simple async_client downloads
 //!
-//! Provides easy to use functions to download a file using multiple async connections
+//! Provides easy to use functions to download a file using multiple async_client connections
 //! while taking care to preserve integrity of the file and check it against a SHA256 sum
 //!
 //! This crate is a work in progress
@@ -21,7 +21,7 @@
 //! ```no_run
 //! use manic::Downloader;
 //! #[tokio::main]
-//! async fn main() -> Result<(), manic::ManicError> {
+//! async_client fn main() -> Result<(), manic::ManicError> {
 //!     let number_of_concurrent_tasks: u8 = 5;
 //!     let client = Downloader::new("https://crates.io", number_of_concurrent_tasks).await?;
 //!     let result = client.download().await?;
@@ -30,20 +30,11 @@
 //! ```
 #[macro_use]
 extern crate derive_builder;
-mod chunk;
-mod downloader;
-mod error;
-mod hash;
-mod multi;
+#[cfg(feature = "threaded")]
+pub mod threaded;
+#[cfg(feature = "async")]
+pub mod async_client;
 
-pub use downloader::Downloader;
-pub use downloader::DownloaderBuilder;
-pub use error::{ManicError, Result};
-pub use hash::Hash;
 #[cfg(feature = "progress")]
 pub use indicatif::ProgressStyle;
-pub use multi::Downloaded;
-pub use multi::Map;
-pub use multi::MultiDownloader;
-pub use multi::MultiDownloaderBuilder;
-pub use reqwest::{header, Client, Url};
+pub use reqwest::{header, Url};

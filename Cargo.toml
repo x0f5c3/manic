@@ -24,18 +24,28 @@ progress = ["indicatif"]
 json = ["reqwest/json"]
 rustls = ["reqwest/rustls-tls"]
 openssl = ["reqwest/native-tls"]
+threaded = ["reqwest/blocking", "rusty_pool"]
+async = ["tokio", "futures"]
 
 [dependencies]
-tokio = { version = "1.12.0", features = ["fs", "rt-multi-thread", "macros"] }
 url = "2.2.2"
 sha2 = "0.9.8"
 indicatif = { version = "0.16.2", optional = true }
 tracing = { version = "0.1.28", features = ["log"] }
-futures = "0.3.17"
+futures = { version = "0.3.17", optional = true }
 rayon = "1.5.1"
 derive_builder = "0.10.2"
 bytes = "1.1.0"
 
+[dependencies.rusty_pool]
+version = "*"
+default-features = false
+optional = true
+
+[dependencies.tokio]
+version = "1.12.0"
+features = ["fs", "rt-multi-thread", "macros"]
+optional = true
 
 [dependencies.reqwest]
 version = "0.11.6"
@@ -52,3 +62,8 @@ tempfile = "3.2.0"
 [[bench]]
 name = "remote_benchmark"
 harness = false
+
+[[bench]]
+name = "remote_threaded_benchmark"
+harness = false
+required-features = ["threaded"]
