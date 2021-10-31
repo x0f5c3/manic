@@ -1,9 +1,9 @@
 #![allow(dead_code)]
-use crate::chunk::ChunkVec;
-use crate::downloader::join_all;
-use crate::error::ManicError;
-use crate::Result;
-use crate::{Downloader, Hash};
+use super::chunk::ChunkVec;
+use super::downloader::join_all;
+use super::error::ManicError;
+use super::Result;
+use super::{Downloader, Hash};
 use indicatif::{MultiProgress, ProgressBar};
 use std::collections::HashMap;
 use std::path::Path;

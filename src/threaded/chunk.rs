@@ -1,7 +1,8 @@
-use crate::downloader::join_all;
+use super::downloader::join_all;
+use super::Result;
+use super::{Hash, ManicError};
 use crate::header::RANGE;
-use crate::{Client, Result};
-use crate::{Hash, ManicError};
+use crate::threaded::Client;
 use bytes::Bytes;
 use indicatif::ProgressBar;
 use rayon::prelude::*;
@@ -96,7 +97,7 @@ impl Chunk {
         #[cfg(feature = "progress")] pb: Option<ProgressBar>,
     ) -> Result<Self> {
         let resp = client
-            .get(url.to_string())
+            .get(url)
             .header(RANGE, self.bytes.clone())
             .send()?;
         let res = resp.bytes()?;

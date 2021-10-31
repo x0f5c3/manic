@@ -1,7 +1,8 @@
 use log::LevelFilter;
-use manic::{Downloader, Hash};
-#[tokio::test]
-ManicError:: file_test_local() -> manic::Result<()> {
+use manic::threaded::{Downloader, Hash};
+
+#[test]
+fn file_test_local() -> manic::threaded::Result<()> {
     pretty_env_logger::formatted_builder()
         .filter(Some("manic"), LevelFilter::Debug)
         .init();

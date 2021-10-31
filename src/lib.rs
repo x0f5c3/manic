@@ -30,15 +30,15 @@
 //! ```
 #[macro_use]
 extern crate derive_builder;
-mod chunk;
-mod downloader;
-mod error;
-mod hash;
-mod multi;
-
-pub use downloader::Downloader;
-pub use error::{ManicError, Result};
-pub use hash::Hash;
+// mod chunk;
+// mod error;
+// mod hash;
+// mod multi;
+//
+// pub use downloader::Downloader;
+// pub use error::{ManicError, Result};
+// pub use hash::Hash;
+pub mod threaded;
 #[cfg(feature = "progress")]
 pub use indicatif::ProgressStyle;
-pub use reqwest::{blocking::Client, header, Url};
+pub use reqwest::{header, Url};

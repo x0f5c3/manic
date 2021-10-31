@@ -1,2 +1,2 @@
-mod local;
-mod remote;
+mod local_threaded;
+mod remote_threaded;

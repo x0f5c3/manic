@@ -51,5 +51,5 @@ tempfile = "3.2.0"
 num_cpus = "1.13.0"
 
 [[bench]]
-name = "remote_benchmark"
+name = "remote_threaded_benchmark"
 harness = false
