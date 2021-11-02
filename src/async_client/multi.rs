@@ -1,7 +1,7 @@
 #![allow(dead_code)]
-use crate::chunk::ChunkVec;
-use crate::downloader::join_all;
-use crate::error::ManicError;
+use super::chunk::ChunkVec;
+use super::downloader::join_all;
+use crate::ManicError;
 use crate::{Downloader, Hash};
 use crate::{ProgressStyle, Result};
 use indicatif::{MultiProgress, ProgressBar};
@@ -60,7 +60,7 @@ impl Downloaded {
     }
 }
 
-#[derive(Debug, Clone, Builder)]
+#[derive(Clone, Builder)]
 pub struct MultiDownloader {
     #[builder(default)]
     downloaders: Map,
@@ -72,7 +72,7 @@ pub struct MultiDownloader {
 }
 
 impl MultiDownloader {
-    pub async fn new(progress: bool) -> MultiDownloader {
+    pub async fn new(#[cfg(feature = "progress")] progress: bool) -> MultiDownloader {
         #[cfg(feature = "progress")]
         let pb = if progress {
             Some(Arc::new(MultiProgress::new()))

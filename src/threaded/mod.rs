@@ -1,12 +1,10 @@
 mod chunk;
 pub mod downloader;
-mod error;
-mod hash;
 mod multi;
 
+#[doc(inline)]
 pub use downloader::Downloader;
-pub use error::{ManicError, Result};
-pub use hash::Hash;
 #[cfg(feature = "progress")]
 pub use indicatif::ProgressStyle;
+pub use multi::MultiDownloader;
 pub use reqwest::blocking::Client;

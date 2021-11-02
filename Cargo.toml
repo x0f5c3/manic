@@ -19,13 +19,13 @@ targets = ["x86_64-apple-darwin", "x86_64-pc-windows-msvc", "x86_64-pc-windows-g
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 [features]
-default = ["rustls", "json", "progress"]
+default = ["rustls", "json", "progress", "async"]
 progress = ["indicatif"]
 json = ["reqwest/json"]
 rustls = ["reqwest/rustls-tls"]
 openssl = ["reqwest/native-tls"]
-threaded = ["reqwest/blocking", "rusty_pool"]
-async = ["tokio", "futures"]
+threaded = ["reqwest/blocking", "rusty_pool", "rustls"]
+async = ["tokio", "futures", "rustls"]
 
 [dependencies]
 url = "2.2.2"
@@ -41,6 +41,11 @@ bytes = "1.1.0"
 version = "*"
 default-features = false
 optional = true
+
+[dependencies.derive_more]
+version = "0.99.16"
+default-features = false
+features = ["display", "from", "error"]
 
 [dependencies.tokio]
 version = "1.12.0"
@@ -58,10 +63,13 @@ log = "0.4.14"
 criterion = { version = "0.3.5", features = ["async_tokio"] }
 reqwest = { version = "0.11.6", default-features = false, features = ["blocking"] }
 tempfile = "3.2.0"
+warp = "0.3.1"
+tokio = { version = "1.12.0", features = ["macros"] }
 
 [[bench]]
 name = "remote_benchmark"
 harness = false
+required-features = ["async"]
 
 [[bench]]
 name = "remote_threaded_benchmark"

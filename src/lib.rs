@@ -12,16 +12,21 @@
 //!
 //! - `progress`: Enables progress reporting using `indicatif`
 //! - `json`: Enables use of JSON features on the reqwest [`Client`][reqwest::Client]
+//! - `async`: Enables the async downloader, on by default
+//! - `threaded`: Enables the native thread based downloader
+//! - `rustls`: Use rustls for HTTPS, on by default
+//! - `openssl`: Use openssl for HTTPS
+//!
 //!
 //!
 //! ## Crate usage
 //!
-//! # Example
+//! ### Example
 //!
 //! ```no_run
 //! use manic::Downloader;
 //! #[tokio::main]
-//! async_client fn main() -> Result<(), manic::ManicError> {
+//! async fn main() -> Result<(), manic::ManicError> {
 //!     let number_of_concurrent_tasks: u8 = 5;
 //!     let client = Downloader::new("https://crates.io", number_of_concurrent_tasks).await?;
 //!     let result = client.download().await?;
@@ -30,11 +35,25 @@
 //! ```
 #[macro_use]
 extern crate derive_builder;
-#[cfg(feature = "threaded")]
-pub mod threaded;
-#[cfg(feature = "async")]
-pub mod async_client;
 
 #[cfg(feature = "progress")]
 pub use indicatif::ProgressStyle;
 pub use reqwest::{header, Url};
+
+#[cfg(feature = "async")]
+#[doc(inline)]
+pub use async_client::{Client, Downloader, MultiDownloader};
+pub use error::{ManicError, Result};
+#[cfg(all(not(feature = "async"), feature = "threaded"))]
+#[doc(inline)]
+pub use threaded::{Client, Downloader, MultiDownloader};
+
+#[cfg(feature = "async")]
+pub mod async_client;
+mod error;
+
+mod hash;
+#[cfg(feature = "threaded")]
+pub mod threaded;
+
+pub use hash::Hash;

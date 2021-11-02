@@ -1,6 +1,6 @@
 #![allow(dead_code)]
-use crate::chunk::{ChunkVec, Chunks};
-use crate::multi::Downloaded;
+use super::chunk::{ChunkVec, Chunks};
+use super::multi::Downloaded;
 use crate::Hash;
 use crate::ManicError;
 use crate::Result;

@@ -1,21 +1,22 @@
 #![allow(dead_code)]
+
 use super::chunk::{ChunkVec, Chunks};
-use super::error::ManicError;
-use super::error::Result;
-use super::hash::Hash;
 use super::multi::Downloaded;
+use crate::Hash;
+use crate::{ManicError, Result};
+#[cfg(feature = "progress")]
 use indicatif::ProgressBar;
+use rayon::prelude::*;
 use reqwest::blocking::Client;
 use reqwest::header::{CONTENT_LENGTH, RANGE};
+use rusty_pool::JoinHandle;
+use rusty_pool::ThreadPool;
 use std::fs::File;
 use std::io::Write;
 use std::path::Path;
-// use tokio::task::JoinHandle;
-use rayon::prelude::*;
-use std::thread::JoinHandle;
 use tracing::{debug, instrument};
 
-#[derive(Debug, Clone, Builder)]
+#[derive(Clone, Builder)]
 pub struct Downloader {
     filename: String,
     #[builder(default, setter(skip))]
@@ -25,6 +26,7 @@ pub struct Downloader {
     hash: Option<Hash>,
     length: u64,
     chunks: Chunks,
+    pool: ThreadPool,
     #[cfg(feature = "progress")]
     pb: Option<indicatif::ProgressBar>,
 }
@@ -42,7 +44,18 @@ impl Downloader {
     pub fn filename(&self) -> &str {
         &self.filename
     }
-    fn assemble_downloader(url: &str, workers: u8, length: u64, client: Client) -> Result<Self> {
+    pub(crate) fn new_multi(url: &str, workers: u8, pool: ThreadPool) -> Result<Self> {
+        let client = Client::new();
+        let length = content_length(&client, url)?;
+        Self::assemble_downloader(url, workers, length, client, pool)
+    }
+    fn assemble_downloader(
+        url: &str,
+        workers: u8,
+        length: u64,
+        client: Client,
+        pool: ThreadPool,
+    ) -> Result<Self> {
         let parsed = reqwest::Url::parse(url)?;
         if length == 0 {
             return Err(ManicError::NoLen);
@@ -58,6 +71,7 @@ impl Downloader {
             hash: None,
             length,
             chunks,
+            pool,
         });
         #[cfg(feature = "progress")]
         return Ok(Self {
@@ -69,11 +83,15 @@ impl Downloader {
             length,
             chunks,
             pb: None,
+            pool,
         });
     }
     pub fn new_manual(url: &str, workers: u8, length: u64) -> Result<Self> {
         let client = Client::new();
-        Self::assemble_downloader(url, workers, length, client)
+        let pool = rusty_pool::Builder::new()
+            .max_size(workers as usize)
+            .build();
+        Self::assemble_downloader(url, workers, length, client, pool)
     }
     /// Create a new downloader
     ///
@@ -84,11 +102,9 @@ impl Downloader {
     /// # Examples
     ///
     /// ```no_run
-    /// use manic::Downloader;
-    /// # #[tokio::main]
+    /// use manic::threaded::Downloader;
     /// # fn main() -> Result<(), manic::ManicError> {
-    ///     // If only one TLS feature is enabled
-    ///     let downloader = Downloader::new("https://crates.io", 5)?;
+    ///    let downloader = Downloader::new("https://crates.io", 5)?;
     ///
     /// # Ok(())
     /// # }
@@ -96,7 +112,10 @@ impl Downloader {
     pub fn new(url: &str, workers: u8) -> Result<Self> {
         let client = Client::new();
         let length = content_length(&client, url)?;
-        Self::assemble_downloader(url, workers, length, client)
+        let pool = rusty_pool::Builder::new()
+            .max_size(workers as usize)
+            .build();
+        Self::assemble_downloader(url, workers, length, client, pool)
     }
     pub fn url_to_filename(url: &reqwest::Url) -> Result<String> {
         url.path_segments()
@@ -139,16 +158,15 @@ impl Downloader {
     /// # Example
     ///
     /// ```no_run
-    /// use manic::Downloader;
+    /// use manic::threaded::Downloader;
     /// use manic::ManicError;
-    /// # #[tokio::main]
     /// # fn main() -> Result<(), ManicError> {
     /// let client = Downloader::new("https://crates.io", 5)?;
     /// let result = client.download()?;
     /// # Ok(())
     /// # }
     /// ```
-    #[instrument(skip(self), fields(URL=%self.url, tasks=%self.workers))]
+    #[instrument(skip(self), fields(URL = % self.url, tasks = % self.workers))]
     pub fn download(&self) -> Result<ChunkVec> {
         let mb = &self.length / 1000000;
         debug!("File size: {}MB", mb);
@@ -157,7 +175,13 @@ impl Downloader {
         let client = self.client.clone();
         #[cfg(feature = "progress")]
         let pb = self.pb.clone();
-        let result = chnks.download(client, url.to_string(), pb)?;
+        let result = chnks.download(
+            client,
+            url.to_string(),
+            #[cfg(feature = "progress")]
+            pb,
+            self.pool.clone(),
+        )?;
         if let Some(hash) = &self.hash {
             result.verify(hash.clone())?;
             debug!("Compared");
@@ -178,10 +202,9 @@ impl Downloader {
     /// # Example
     ///
     /// ```no_run
-    /// use manic::Downloader;
+    /// use manic::threaded::Downloader;
     /// use manic::ManicError;
     /// use manic::Hash;
-    /// #[tokio::main]
     /// fn main() -> Result<(), ManicError> {
     ///     let hash = Hash::new_sha256("039058c6f2c0cb492c533b0a4d14ef77cc0f78abccced5287d84a1a2011cfb81".to_string());
     ///     let client = Downloader::new("https://crates.io", 5)?.verify(hash);
@@ -203,14 +226,14 @@ impl Downloader {
         };
         let data = self.download()?;
         let c = result.try_clone()?;
-        data.save(c)?;
+        data.save(c, self.pool.clone())?;
         result.sync_all()?;
         result.flush()?;
         Ok(())
     }
 }
 
-#[instrument(skip(client, url), fields(URL=%url))]
+#[instrument(skip(client, url), fields(URL = % url))]
 fn content_length(client: &Client, url: &str) -> Result<u64> {
     let resp = client.head(url).send()?;
     debug!("Response code: {}", resp.status());
@@ -240,7 +263,7 @@ fn content_length(client: &Client, url: &str) -> Result<u64> {
 pub fn join_all<T: Clone + Send>(i: Vec<JoinHandle<Result<T>>>) -> Result<Vec<T>> {
     let (successful, errs): (Vec<Result<T>>, Vec<Result<T>>) = i
         .into_par_iter()
-        .map(|x| x.join())
+        .map(|x| x.try_await_complete())
         .filter_map(|x| x.ok())
         .partition(|x| x.is_ok());
     check_err(
@@ -248,6 +271,7 @@ pub fn join_all<T: Clone + Send>(i: Vec<JoinHandle<Result<T>>>) -> Result<Vec<T>
         successful.into_par_iter().filter_map(|x| x.ok()).collect(),
     )
 }
+
 pub fn check_err<T: Clone>(err: Vec<ManicError>, good: Vec<T>) -> Result<Vec<T>> {
     if !err.is_empty() && good.is_empty() {
         Err(err.into())

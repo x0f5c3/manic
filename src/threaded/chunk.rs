@@ -1,17 +1,18 @@
 use super::downloader::join_all;
-use super::Result;
-use super::{Hash, ManicError};
 use crate::header::RANGE;
 use crate::threaded::Client;
+use crate::Hash;
+use crate::{ManicError, Result};
 use bytes::Bytes;
+#[cfg(feature = "progress")]
 use indicatif::ProgressBar;
 use rayon::prelude::*;
+use rusty_pool::ThreadPool;
 use std::fs::File;
 use std::io::SeekFrom;
 use std::io::{Seek, Write};
 use std::path::Path;
 use std::sync::Arc;
-use std::thread;
 use tracing::{info, instrument};
 
 /// Iterator over remote file chunks that returns a formatted [`RANGE`][reqwest::header::RANGE] header value
@@ -29,16 +30,16 @@ pub struct ChunkVec {
 }
 
 impl ChunkVec {
-    pub fn save_to_file<T: AsRef<Path>>(&self, path: T) -> Result<()> {
+    pub fn save_to_file<T: AsRef<Path>>(&self, path: T, pool: ThreadPool) -> Result<()> {
         let f = File::create(path)?;
-        self.save(f)
+        self.save(f, pool)
     }
-    pub(crate) fn save(&self, output: File) -> Result<()> {
+    pub(crate) fn save(&self, output: File, pool: ThreadPool) -> Result<()> {
         let mut fut_vec = Vec::new();
         for i in self.chunks.iter() {
             let f = output.try_clone()?;
             let c = i.clone();
-            fut_vec.push(thread::spawn(|| c.save(f)))
+            fut_vec.push(pool.evaluate(|| c.save(f)))
         }
         join_all(fut_vec)?;
         output.sync_all()?;
@@ -64,6 +65,7 @@ impl From<Vec<Chunk>> for ChunkVec {
         }
     }
 }
+
 #[derive(Debug, Clone)]
 pub struct Chunk {
     pub buf: Bytes,
@@ -81,7 +83,7 @@ impl AsRef<Chunk> for Chunk {
 }
 
 impl Chunk {
-    #[instrument(skip(self, output), fields(low=%self.low, hi=%self.hi, range=%self.bytes, pos=%self.pos))]
+    #[instrument(skip(self, output), fields(low = % self.low, hi = % self.hi, range = % self.bytes, pos = % self.pos))]
     pub(crate) fn save(self, mut output: File) -> Result<()> {
         output.seek(SeekFrom::Start(self.low))?;
         info!("Seeked");
@@ -89,7 +91,7 @@ impl Chunk {
         info!("Written {} bytes", n);
         Ok(())
     }
-    #[instrument(skip(self, client, pb), fields(range = %self.bytes))]
+    #[instrument(skip(self, client, pb), fields(range = % self.bytes))]
     pub(crate) fn download(
         mut self,
         client: Client,
@@ -128,7 +130,8 @@ impl Chunks {
         &self,
         client: Client,
         url: String,
-        pb: Option<ProgressBar>,
+        #[cfg(feature = "progress")] pb: Option<ProgressBar>,
+        pool: ThreadPool,
     ) -> Result<ChunkVec> {
         let chnk_vec = self.collect::<Vec<Chunk>>();
         let fut_vec = chnk_vec
@@ -138,7 +141,7 @@ impl Chunks {
                 let url1 = url.clone();
                 #[cfg(feature = "progress")]
                 let pb1 = pb.clone();
-                thread::spawn(|| {
+                pool.evaluate(|| {
                     x.download(
                         client1,
                         url1,

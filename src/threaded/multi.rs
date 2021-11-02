@@ -1,18 +1,25 @@
 #![allow(dead_code)]
+
 use super::chunk::ChunkVec;
 use super::downloader::join_all;
-use super::error::ManicError;
-use super::Result;
-use super::{Downloader, Hash};
-use indicatif::{MultiProgress, ProgressBar};
+use super::Downloader;
+use crate::{Hash, ManicError, Result};
+#[cfg(feature = "progress")]
+use indicatif::{MultiProgress, ProgressBar, ProgressStyle};
+use rusty_pool::ThreadPool;
 use std::collections::HashMap;
 use std::path::Path;
 use std::sync::Arc;
 use std::sync::{Mutex, MutexGuard};
-use std::thread;
 
-#[derive(Clone, Debug)]
+#[derive(Clone)]
 pub struct Map(Arc<Mutex<HashMap<String, Downloader>>>);
+
+impl Default for Map {
+    fn default() -> Self {
+        Self(Arc::new(Mutex::new(HashMap::new())))
+    }
+}
 
 impl Map {
     pub(crate) fn new() -> Self {
@@ -51,35 +58,50 @@ impl Downloaded {
     pub(crate) fn new(url: String, name: String, data: ChunkVec) -> Self {
         Self { url, name, data }
     }
-    pub(crate) fn save<T: AsRef<Path>>(&self, output_dir: T) -> Result<()> {
+    pub(crate) fn save<T: AsRef<Path>>(&self, output_dir: T, pool: ThreadPool) -> Result<()> {
         let output_path = output_dir.as_ref().join(Path::new(&self.name));
-        self.data.save_to_file(output_path)
+        self.data.save_to_file(output_path, pool)
     }
 }
 
-#[derive(Debug)]
+#[derive(Clone, Builder)]
 pub struct MultiDownloader {
+    #[builder(default)]
     downloaders: Map,
+    #[builder(default, setter(skip))]
     #[cfg(feature = "progress")]
-    progress: Option<MultiProgress>,
+    progress: Option<Arc<MultiProgress>>,
+    #[cfg(feature = "progress")]
+    progress_style: Option<ProgressStyle>,
+    #[builder(default, setter(skip))]
+    pool: ThreadPool,
+    workers: u8,
 }
 
 impl MultiDownloader {
-    pub fn new(progress: bool) -> MultiDownloader {
+    pub fn new(#[cfg(feature = "progress")] progress: bool, workers: u8) -> MultiDownloader {
         #[cfg(feature = "progress")]
         let pb = if progress {
-            Some(MultiProgress::new())
+            Some(Arc::new(MultiProgress::new()))
         } else {
             None
         };
+        let pool = rusty_pool::Builder::new()
+            .max_size(workers as usize)
+            .build();
         Self {
             downloaders: Map::new(),
             #[cfg(feature = "progress")]
             progress: pb,
+            #[cfg(feature = "progress")]
+            progress_style: None,
+            pool,
+            workers,
         }
     }
-    pub fn add(&mut self, url: String, workers: u8) -> Result<()> {
-        let mut client = Downloader::new(&url, workers)?;
+    pub fn add(&mut self, url: String) -> Result<()> {
+        #[allow(unused_mut)]
+        let mut client = Downloader::new_multi(&url, self.workers, self.pool.clone())?;
         #[cfg(feature = "progress")]
         if let Some(pb) = &self.progress {
             let mpb = ProgressBar::new(client.get_len());
@@ -101,7 +123,7 @@ impl MultiDownloader {
         let lock = self.downloaders.lock()?;
         for v in lock.values() {
             let c = v.clone();
-            fut_vec.push(thread::spawn(|| c.multi_download()));
+            fut_vec.push(self.pool.evaluate(|| c.multi_download()));
         }
         Ok(join_all(fut_vec)?.to_vec())
     }

@@ -1,7 +1,8 @@
 use super::downloader::{join_all, join_all_futures};
+use super::Client;
 use crate::header::RANGE;
-use super::{Client, Result};
-use super::{Hash, ManicError};
+use crate::Hash;
+use crate::{ManicError, Result};
 use futures::StreamExt;
 use indicatif::ProgressBar;
 use rayon::prelude::*;

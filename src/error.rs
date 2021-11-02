@@ -5,7 +5,6 @@ use std::error::Error;
 use std::fmt;
 use std::fmt::Formatter;
 use std::num::ParseIntError;
-use tokio::io;
 use url::ParseError;
 
 /// Error definition for possible errors in this crate
@@ -15,8 +14,8 @@ pub enum ManicError {
     LenParse,
     /// Returned when the content-length = 0
     NoLen,
-    /// Represents problems with Tokio based IO
-    TokioIOError(String),
+    /// Represents problems with IO
+    IOError(String),
     /// Represents problems with network connectivity
     NetError {
         url: Option<Url>,
@@ -46,7 +45,7 @@ impl fmt::Display for ManicError {
         match self {
             Self::LenParse => write!(f, "Failed to parse content-length"),
             Self::NoLen => write!(f, "Failed to retrieve content-length"),
-            Self::TokioIOError(s) => write!(f, "Tokio IO error: {}", s),
+            Self::IOError(s) => write!(f, "Tokio IO error: {}", s),
             Self::NetError {
                 url,
                 code,
@@ -87,9 +86,9 @@ impl From<ParseIntError> for ManicError {
     }
 }
 
-impl From<io::Error> for ManicError {
+impl From<std::io::Error> for ManicError {
     fn from(e: std::io::Error) -> Self {
-        Self::TokioIOError(e.to_string())
+        Self::IOError(e.to_string())
     }
 }
 

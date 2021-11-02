@@ -1,9 +1,9 @@
 use criterion::{criterion_group, criterion_main, BenchmarkId, Criterion};
 use manic::threaded::Downloader;
-use manic::threaded::Hash;
+use manic::Hash;
 use std::time::Duration;
 
-fn bench_remote(workers: u8, verify: bool) -> manic::threaded::Result<()> {
+fn bench_remote(workers: u8, verify: bool) -> manic::Result<()> {
     let mut dl = Downloader::new(
         "https://github.com/schollz/croc/releases/download/v9.2.0/croc_9.2.0_Windows-64bit.zip",
         workers,
