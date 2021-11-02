@@ -1,5 +1,6 @@
 use log::LevelFilter;
 use manic::{Downloader, Hash, ManicError, Result};
+use std::time::Duration;
 
 #[tokio::test]
 async fn local() -> Result<()> {
@@ -8,6 +9,7 @@ async fn local() -> Result<()> {
         .filter(Some("warp"), LevelFilter::Info)
         .try_init();
     tokio::spawn(async { crate::start_server(8001, None, None).await });
+    std::thread::sleep(Duration::from_secs(3));
     let mut res_vec: Vec<ManicError> = Vec::new();
     let mut is_err = false;
     for i in 1..=10 {
