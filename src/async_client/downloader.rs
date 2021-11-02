@@ -5,6 +5,7 @@ use crate::Hash;
 use crate::ManicError;
 use crate::Result;
 use futures::Future;
+#[cfg(feature = "progress")]
 use indicatif::ProgressBar;
 use reqwest::header::{CONTENT_LENGTH, RANGE};
 use reqwest::Client;
@@ -161,7 +162,14 @@ impl Downloader {
         let client = self.client.clone();
         #[cfg(feature = "progress")]
         let pb = self.pb.clone();
-        let result = chnks.download(client, url.to_string(), pb).await?;
+        let result = chnks
+            .download(
+                client,
+                url.to_string(),
+                #[cfg(feature = "progress")]
+                pb,
+            )
+            .await?;
         if let Some(hash) = &self.hash {
             result.verify(hash.clone()).await?;
             debug!("Compared");

@@ -4,6 +4,7 @@ use crate::header::RANGE;
 use crate::Hash;
 use crate::{ManicError, Result};
 use futures::StreamExt;
+#[cfg(feature = "progress")]
 use indicatif::ProgressBar;
 use rayon::prelude::*;
 use std::io::SeekFrom;
@@ -96,7 +97,7 @@ impl Chunk {
         mut self,
         client: Client,
         url: String,
-        pb: Option<ProgressBar>,
+        #[cfg(feature = "progress")] pb: Option<ProgressBar>,
     ) -> Result<Self> {
         let resp = client
             .get(url.to_string())
@@ -148,7 +149,7 @@ impl Chunks {
         &self,
         client: Client,
         url: String,
-        pb: Option<ProgressBar>,
+        #[cfg(feature = "progress")] pb: Option<ProgressBar>,
     ) -> Result<ChunkVec> {
         let fut_vec = self
             .map(|x| {

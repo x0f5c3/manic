@@ -19,6 +19,6 @@ jobs:
       - name: Run fmt check
         run: cargo fmt -- --check
       - name: Run threaded tests
-        run: cargo test --tests threaded::local --all-features
+        run: cargo test --tests threaded::local --no-default-features --features threaded
       - name: Run async tests
-        run: cargo test --tests async_tests::local --all-features
+        run: cargo test --tests async_tests::local --no-default-features --features async

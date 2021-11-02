@@ -8,8 +8,8 @@ async fn local() -> Result<()> {
         .filter(Some("manic"), LevelFilter::Debug)
         .filter(Some("warp"), LevelFilter::Info)
         .try_init();
-    tokio::spawn(async { crate::start_server(8001, None, None).await });
-    std::thread::sleep(Duration::from_secs(3));
+    tokio::spawn(crate::start_server(8001, None, None));
+    tokio::time::sleep(Duration::from_secs(3)).await;
     let mut res_vec: Vec<ManicError> = Vec::new();
     let mut is_err = false;
     for i in 1..=10 {

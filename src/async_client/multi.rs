@@ -2,9 +2,10 @@
 use super::chunk::ChunkVec;
 use super::downloader::join_all;
 use crate::ManicError;
+use crate::Result;
 use crate::{Downloader, Hash};
-use crate::{ProgressStyle, Result};
-use indicatif::{MultiProgress, ProgressBar};
+#[cfg(feature = "progress")]
+use indicatif::{MultiProgress, ProgressBar, ProgressStyle};
 use std::collections::HashMap;
 use std::path::Path;
 use std::sync::Arc;
@@ -88,6 +89,7 @@ impl MultiDownloader {
         }
     }
     pub async fn add(&mut self, url: String, workers: u8) -> Result<()> {
+        #[allow(unused_mut)]
         let mut client = Downloader::new(&url, workers).await?;
         #[cfg(feature = "progress")]
         if let Some(pb) = &self.progress {
