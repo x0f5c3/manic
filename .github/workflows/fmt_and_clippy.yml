@@ -18,5 +18,7 @@ jobs:
         run: cargo clippy --all-features -- -D warnings
       - name: Run fmt check
         run: cargo fmt -- --check
-      - name: Run tests
-        run: cargo test --tests local --all-features
+      - name: Run threaded tests
+        run: cargo test --tests threaded::local --all-features
+      - name: Run async tests
+        run: cargo test --tests async_tests::local --all-features
