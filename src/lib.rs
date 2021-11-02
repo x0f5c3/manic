@@ -21,7 +21,7 @@
 //!
 //! ## Crate usage
 //!
-//! ### Example
+//! ### Async example
 //!
 //! ```no_run
 //! use manic::Downloader;
@@ -32,6 +32,15 @@
 //!     let result = client.download().await?;
 //!     Ok(())
 //! }
+//! ```
+//!
+//! ### Native threading example
+//!
+//! ```no_run
+//! use manic::threaded::Downloader;
+//! let client = Downloader::new("https://crates.io", 5)?;
+//! client.download()?;
+//! Ok::<(), manic::ManicError>(())
 //! ```
 #[macro_use]
 extern crate derive_builder;
