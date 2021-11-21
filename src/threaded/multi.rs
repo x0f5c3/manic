@@ -28,7 +28,7 @@ impl Map {
     pub(crate) fn lock(&self) -> Result<MutexGuard<'_, HashMap<String, Downloader>>> {
         self.0
             .lock()
-            .map_err(|e| ManicError::MultipleErrors(e.to_string()))
+            .map_err(|e| ManicError::PoisonError(e.to_string()))
     }
     pub(crate) fn as_inner(&self) -> &Arc<Mutex<HashMap<String, Downloader>>> {
         &self.0

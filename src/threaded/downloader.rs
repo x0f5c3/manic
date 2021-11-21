@@ -261,23 +261,9 @@ fn content_length(client: &Client, url: &str) -> Result<u64> {
 }
 
 pub fn join_all<T: Clone + Send>(i: Vec<JoinHandle<Result<T>>>) -> Result<Vec<T>> {
-    let (successful, errs): (Vec<Result<T>>, Vec<Result<T>>) = i
+    i.into_par_iter()
+        .map(|x| x.try_await_complete().map_err(ManicError::Canceled))
+        .collect::<Result<Vec<Result<T>>>>()?
         .into_par_iter()
-        .map(|x| x.try_await_complete())
-        .filter_map(|x| x.ok())
-        .partition(|x| x.is_ok());
-    check_err(
-        errs.into_par_iter().filter_map(|x| x.err()).collect(),
-        successful.into_par_iter().filter_map(|x| x.ok()).collect(),
-    )
-}
-
-pub fn check_err<T: Clone>(err: Vec<ManicError>, good: Vec<T>) -> Result<Vec<T>> {
-    if !err.is_empty() && good.is_empty() {
-        Err(err.into())
-    } else if !good.is_empty() {
-        Ok(good)
-    } else {
-        Err(ManicError::NoResults)
-    }
+        .collect()
 }

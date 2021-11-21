@@ -1,135 +1,47 @@
-use crate::Url;
-use reqwest::header::ToStrError;
-use reqwest::StatusCode;
-use std::error::Error;
-use std::fmt;
-use std::fmt::Formatter;
 use std::num::ParseIntError;
-use url::ParseError;
+use thiserror::Error;
 
 /// Error definition for possible errors in this crate
-#[derive(Debug, Clone)]
+#[derive(Debug, Error)]
 pub enum ManicError {
     /// Returned when the content length couldn't be parsed
-    LenParse,
+    #[error("Failed to parse content-length")]
+    LenParse(#[from] ParseIntError),
     /// Returned when the content-length = 0
+    #[error("Content length is 0")]
     NoLen,
     /// Represents problems with IO
-    IOError(String),
-    /// Represents problems with network connectivity
-    NetError {
-        url: Option<Url>,
-        code: Option<StatusCode>,
-        reason: Option<String>,
-        err: String,
-    },
+    #[error("IO error: {0}")]
+    IOError(#[from] std::io::Error),
+    #[error("Network error: {0}")]
+    NetError(#[from] reqwest::Error),
     /// Returned when the header can't be parsed to a String
-    ToStr(String),
+    #[error("Header to string error: {0}")]
+    ToStr(#[from] reqwest::header::ToStrError),
     /// Returned when there's no filename in the url
+    #[error("No filename in url {0}")]
     NoFilename(String),
     /// Returned when the url couldn't be parsed
-    UrlParseError(String),
+    #[error("URL parsing error: {0}")]
+    UrlParseError(#[from] url::ParseError),
     /// Returned when the SHA256 sum didn't match
+    #[error("SHA sum mismatch: {0}")]
     SHA256MisMatch(String),
     /// Returned when the selected chunk size == 0
+    #[error("Chunk size cannot be 0")]
     BadChunkSize,
+    #[error("Not found")]
     NotFound,
-    MultipleErrors(String),
+    #[error("No results found")]
     NoResults,
-}
-
-impl Error for ManicError {}
-
-impl fmt::Display for ManicError {
-    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        match self {
-            Self::LenParse => write!(f, "Failed to parse content-length"),
-            Self::NoLen => write!(f, "Failed to retrieve content-length"),
-            Self::IOError(s) => write!(f, "Tokio IO error: {}", s),
-            Self::NetError {
-                url,
-                code,
-                reason,
-                err,
-            } => {
-                let msg = {
-                    let mut tomod = "Reqwest error:\n".to_string();
-                    if let Some(u) = url {
-                        tomod.push_str(&format!("URL: {}\n", u))
-                    }
-                    if let Some(c) = code {
-                        tomod.push_str(&format!("Status code: {}\n", c))
-                    }
-                    if let Some(r) = reason {
-                        tomod.push_str(&format!("Reason: {}\n", r))
-                    }
-                    tomod.push_str(&format!("Error: {}", err));
-                    tomod
-                };
-                write!(f, "{}", msg)
-            }
-            Self::ToStr(s) => write!(f, "Couldn't parse the header into string: {}", s),
-            Self::NoFilename(s) => write!(f, "No filename in url: {}", s),
-            Self::UrlParseError(s) => write!(f, "Failed to parse URL: {}", s),
-            Self::SHA256MisMatch(s) => write!(f, "Checksum doesn't match: {}", s),
-            Self::BadChunkSize => write!(f, "Invalid chunk size"),
-            Self::NotFound => write!(f, "Downloader not found"),
-            Self::MultipleErrors(s) => write!(f, "{}", s),
-            Self::NoResults => write!(f, "No errors and no results from join_all"),
-        }
-    }
-}
-
-impl From<ParseIntError> for ManicError {
-    fn from(_: ParseIntError) -> Self {
-        Self::LenParse
-    }
-}
-
-impl From<std::io::Error> for ManicError {
-    fn from(e: std::io::Error) -> Self {
-        Self::IOError(e.to_string())
-    }
-}
-
-impl From<reqwest::Error> for ManicError {
-    fn from(e: reqwest::Error) -> Self {
-        let res = {
-            if let Some(code) = e.status() {
-                code.canonical_reason().map(|x| x.to_string())
-            } else {
-                None
-            }
-        };
-        Self::NetError {
-            url: e.url().cloned(),
-            code: e.status(),
-            reason: res,
-            err: e.to_string(),
-        }
-    }
-}
-
-impl From<url::ParseError> for ManicError {
-    fn from(e: ParseError) -> Self {
-        Self::UrlParseError(e.to_string())
-    }
-}
-
-impl From<reqwest::header::ToStrError> for ManicError {
-    fn from(e: ToStrError) -> Self {
-        Self::ToStr(e.to_string())
-    }
+    #[cfg(feature = "threaded")]
+    #[error("Canceled: {0}")]
+    Canceled(#[from] futures_channel::oneshot::Canceled),
+    #[cfg(feature = "async")]
+    #[error("Join error: {0}")]
+    JoinError(#[from] tokio::task::JoinError),
+    #[error("PoisonError: {0}")]
+    PoisonError(String),
 }
 
 pub type Result<T> = std::result::Result<T, ManicError>;
-
-impl<I: Into<ManicError>> From<Vec<I>> for ManicError {
-    fn from(errs: Vec<I>) -> Self {
-        let mut msg = String::new();
-        for i in errs {
-            msg += &format!("- [{}]", i.into());
-        }
-        Self::MultipleErrors(msg)
-    }
-}

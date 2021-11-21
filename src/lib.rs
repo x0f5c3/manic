@@ -38,9 +38,11 @@
 //!
 //! ```no_run
 //! use manic::threaded::Downloader;
+//! # fn main() -> Result<(), manic::ManicError> {
 //! let client = Downloader::new("https://crates.io", 5)?;
 //! client.download()?;
-//! Ok::<(), manic::ManicError>(())
+//! Ok(())
+//! # }
 //! ```
 #[macro_use]
 extern crate derive_builder;
