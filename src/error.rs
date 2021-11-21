@@ -42,6 +42,18 @@ pub enum ManicError {
     JoinError(#[from] tokio::task::JoinError),
     #[error("PoisonError: {0}")]
     PoisonError(String),
+    #[error("{0}")]
+    MultipleErrors(String),
 }
 
 pub type Result<T> = std::result::Result<T, ManicError>;
+
+impl<I: Into<ManicError>> From<Vec<I>> for ManicError {
+    fn from(errs: Vec<I>) -> Self {
+        let mut msg = String::new();
+        for i in errs {
+            msg += &format!("- [{}]", i.into());
+        }
+        Self::MultipleErrors(msg)
+    }
+}
