@@ -1,6 +1,6 @@
 [package]
 name = "manic"
-version = "0.8.0"
+version = "0.8.1"
 authors = ["x0f5c3 <x0f5c3@tutanota.com>"]
 edition = "2018"
 description = "Fast and simple downloads"
@@ -37,9 +37,10 @@ rayon = "1.5.1"
 derive_builder = "0.10.2"
 bytes = "1.1.0"
 thiserror = "1.0.30"
+md-5 = "0.9.1"
 
 [dependencies.futures-channel]
-version = "*"
+version = "0.3.18"
 optional = true
 
 [dependencies.rusty_pool]

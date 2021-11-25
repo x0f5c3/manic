@@ -135,10 +135,12 @@ impl Downloader {
         self.pb = Some(indicatif::ProgressBar::new(self.length));
         self
     }
+    /// Connect the `ProgressBar`[indicatif::ProgressBar] to the `MultiProgress`[indicatif::MultiProgress]
     #[cfg(feature = "progress")]
     pub fn connect_progress(&mut self, pb: ProgressBar) {
         self.pb = Some(pb);
     }
+
     /// Set the progress bar style
     #[cfg(feature = "progress")]
     pub fn bar_style(&self, style: indicatif::ProgressStyle) {
@@ -260,7 +262,7 @@ fn content_length(client: &Client, url: &str) -> Result<u64> {
     }
 }
 
-pub fn join_all<T: Clone + Send>(i: Vec<JoinHandle<Result<T>>>) -> Result<Vec<T>> {
+pub(crate) fn join_all<T: Clone + Send>(i: Vec<JoinHandle<Result<T>>>) -> Result<Vec<T>> {
     i.into_par_iter()
         .map(|x| x.try_await_complete().map_err(ManicError::Canceled))
         .collect::<Result<Vec<Result<T>>>>()?
