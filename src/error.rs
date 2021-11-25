@@ -52,7 +52,7 @@ impl<I: Into<ManicError>> From<Vec<I>> for ManicError {
     fn from(errs: Vec<I>) -> Self {
         let mut msg = String::new();
         for i in errs {
-            msg += &format!("- [{}]", i.into());
+            msg += &format!("- [{}]\n", i.into());
         }
         Self::MultipleErrors(msg)
     }

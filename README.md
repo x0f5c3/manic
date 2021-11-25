@@ -8,35 +8,49 @@
 [![dependency status](https://deps.rs/crate/manic/0.6.4/status.svg)](https://deps.rs/crate/manic/0.6.4)
 
 
-Fast and simple async downloads
+Fast and simple multithread downloads
 
-Provides easy to use functions to download a file using multiple async connections
-while taking care to preserve integrity of the file and check it against a SHA256 sum
-
-This crate is a work in progress
+Provides easy to use functions to download a file using multiple async or threaded connections
+while taking care to preserve integrity of the file and check it against a checksum.
 
 
+## Feature flags
 
-### Feature flags
-
-- `progress`: Enables progress reporting using indicatif
-- `json`: Enables use of JSON features on the reqwest Client
-
-
-### Crate usage
-
-## Examples
+- `progress`: Enables progress reporting using indicatif [enabled by default] 
+- `json`: Enables use of JSON features on the reqwest Client [enabled by default]
+- `rustls`: Use Rustls for HTTPS [enabled by default]
+- `openssl`: Use OpenSSL for HTTPS
+- `threaded`: Enable multithreaded client
+- `async`: Enable async client [enabled by default]
 
 
+## Crate usage
+
+### Examples
+
+#### Async example
 
 ```rust
 use manic::Downloader;
 
 #[tokio::main]
-async fn main() -> Result<(), manic::Error> {
-    let number_of_concurrent_tasks: u8 = 5;
-    let client = Downloader::new("https://crates.io", number_of_concurrent_tasks).await?;
-    let _ = client.download().await?;
+async fn main() -> Result<(), manic::ManicError> {
+	let workers: u8 = 5;
+	let client = Downloader::new("https://crates.io", workers).await?;
+	let _ = client.download().await?;
+	Ok(())
+}
+```
+
+#### Multithread example
+
+```rust
+use manic::threaded::Downloader;
+
+fn main() -> Result<(), manic::ManicError> {
+    let workers: u8 = 5;
+    let client = Downloader::new("https://crates.io", workers)?;
+    let _ = client.download()?;
     Ok(())
 }
 ```
