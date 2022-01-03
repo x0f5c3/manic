@@ -1,3 +1,4 @@
+use std::fmt::Display;
 use std::num::ParseIntError;
 use thiserror::Error;
 
@@ -44,15 +45,17 @@ pub enum ManicError {
     PoisonError(String),
     #[error("{0}")]
     MultipleErrors(String),
+    #[error("Hyper error: {0}")]
+    HyperErr(#[from] hyper::Error),
 }
 
 pub type Result<T> = std::result::Result<T, ManicError>;
 
-impl<I: Into<ManicError>> From<Vec<I>> for ManicError {
+impl<I: Into<ManicError> + Display> From<Vec<I>> for ManicError {
     fn from(errs: Vec<I>) -> Self {
         let mut msg = String::new();
         for i in errs {
-            msg += &format!("- [{}]\n", i.into());
+            msg += &format!("- [{}]\n", i);
         }
         Self::MultipleErrors(msg)
     }

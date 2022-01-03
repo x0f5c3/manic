@@ -10,3 +10,4 @@ pub use multi::MultiDownloaderBuilder;
 mod chunk;
 mod downloader;
 mod multi;
+mod client;
