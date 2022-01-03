@@ -47,6 +47,15 @@ pub enum ManicError {
     MultipleErrors(String),
     #[error("Hyper error: {0}")]
     HyperErr(#[from] hyper::Error),
+    #[error("{0}")]
+    InvalidURI(#[from] hyper::http::uri::InvalidUri),
+    #[error("{0}")]
+    URIParts(#[from] hyper::http::uri::InvalidUriParts),
+    #[cfg(feature = "json")]
+    #[error("JSON error: {0}")]
+    JSONErr(#[from] serde_json::Error),
+    #[error("UTF-8 error: {0}")]
+    UTF8(#[from] std::string::FromUtf8Error),
 }
 
 pub type Result<T> = std::result::Result<T, ManicError>;

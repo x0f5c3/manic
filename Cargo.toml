@@ -21,7 +21,7 @@ targets = ["x86_64-apple-darwin", "x86_64-pc-windows-msvc", "x86_64-pc-windows-g
 [features]
 default = ["rustls", "json", "progress", "async"]
 progress = ["indicatif"]
-json = ["reqwest/json"]
+json = ["reqwest/json", "serde", "serde_json"]
 rustls = ["reqwest/rustls-tls"]
 openssl = ["reqwest/native-tls"]
 threaded = ["reqwest/blocking", "rusty_pool", "rustls", "futures-channel"]
@@ -39,6 +39,15 @@ bytes = "1.1.0"
 thiserror = "1.0.30"
 md-5 = "0.9.1"
 hyper-rustls = "0.23.0"
+
+
+[dependencies.serde]
+version = "*"
+optional = true
+
+[dependencies.serde_json]
+version = "1.0.72"
+optional = true
 
 [dependencies.hyper]
 version = "0.14.16"

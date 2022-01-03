@@ -1,3 +1,4 @@
+#![allow(dead_code, unused_imports)]
 //! Fast and simple async_client downloads
 //!
 //! Provides easy to use functions to download a file using multiple async_client connections
