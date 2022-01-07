@@ -10,6 +10,7 @@ async fn bench_remote(workers: u8) -> manic::Result<()> {
     let mut dl = Downloader::new(
         "https://github.com/schollz/croc/releases/download/v9.2.0/croc_9.2.0_Windows-64bit.zip",
         workers,
+        None,
     )
     .await?;
     dl.verify(Hash::new_sha256(

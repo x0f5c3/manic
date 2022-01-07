@@ -65,6 +65,8 @@ impl Downloaded {
 pub struct MultiDownloader {
     #[builder(default)]
     downloaders: Map,
+    #[builder(default)]
+    redirect: Option<bool>,
     #[builder(default, setter(skip))]
     #[cfg(feature = "progress")]
     progress: Option<Arc<MultiProgress>>,
@@ -73,7 +75,10 @@ pub struct MultiDownloader {
 }
 
 impl MultiDownloader {
-    pub async fn new(#[cfg(feature = "progress")] progress: bool) -> MultiDownloader {
+    pub async fn new(
+        redirect: Option<bool>,
+        #[cfg(feature = "progress")] progress: bool,
+    ) -> MultiDownloader {
         #[cfg(feature = "progress")]
         let pb = if progress {
             Some(Arc::new(MultiProgress::new()))
@@ -82,6 +87,7 @@ impl MultiDownloader {
         };
         Self {
             downloaders: Map::new(),
+            redirect,
             #[cfg(feature = "progress")]
             progress: pb,
             #[cfg(feature = "progress")]
@@ -90,7 +96,7 @@ impl MultiDownloader {
     }
     pub async fn add(&mut self, url: String, workers: u8) -> Result<()> {
         #[allow(unused_mut)]
-        let mut client = Downloader::new(&url, workers).await?;
+        let mut client = Downloader::new(&url, workers, self.redirect).await?;
         #[cfg(feature = "progress")]
         if let Some(pb) = &self.progress {
             let mpb = ProgressBar::new(client.get_len());

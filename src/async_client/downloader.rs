@@ -1,6 +1,7 @@
 #![allow(dead_code)]
 use super::chunk::{ChunkVec, Chunks};
 use super::multi::Downloaded;
+use super::client::Client;
 use crate::Hash;
 use crate::ManicError;
 use crate::Result;
@@ -8,8 +9,8 @@ use futures::Future;
 #[cfg(feature = "progress")]
 use indicatif::ProgressBar;
 use reqwest::header::{CONTENT_LENGTH, RANGE};
-use reqwest::Client;
 use std::path::Path;
+use std::str::FromStr;
 use tokio::fs::File;
 use tokio::io::AsyncWriteExt;
 use tokio::task::JoinHandle;
@@ -21,7 +22,7 @@ pub struct Downloader {
     #[builder(default, setter(skip))]
     client: Client,
     workers: u8,
-    url: reqwest::Url,
+    url: hyper::Uri,
     hash: Option<Hash>,
     length: u64,
     chunks: Chunks,
@@ -48,7 +49,7 @@ impl Downloader {
         length: u64,
         client: Client,
     ) -> Result<Self> {
-        let parsed = reqwest::Url::parse(url)?;
+        let parsed = hyper::Uri::from_str(url)?;
         if length == 0 {
             return Err(ManicError::NoLen);
         }
@@ -76,8 +77,8 @@ impl Downloader {
             pb: None,
         });
     }
-    pub async fn new_manual(url: &str, workers: u8, length: u64) -> Result<Self> {
-        let client = Client::new();
+    pub async fn new_manual(url: &str, workers: u8, length: u64, redirect: Option<bool>) -> Result<Self> {
+        let client = Client::new(redirect.unwrap_or(true));
         Self::assemble_downloader(url, workers, length, client).await
     }
     /// Create a new downloader
@@ -93,19 +94,21 @@ impl Downloader {
     /// # #[tokio::main]
     /// # async fn main() -> Result<(), manic::ManicError> {
     ///     // If only one TLS feature is enabled
-    ///     let downloader = Downloader::new("https://crates.io", 5).await?;
+    ///     let downloader = Downloader::new("https://crates.io", 5, None).await?;
     ///
     /// # Ok(())
     /// # }
     /// ```
-    pub async fn new(url: &str, workers: u8) -> Result<Self> {
-        let client = Client::new();
+    pub async fn new(url: &str, workers: u8, redirect: Option<bool>) -> Result<Self> {
+        let client = Client::new(redirect.unwrap_or(true));
         let length = content_length(&client, url).await?;
         Self::assemble_downloader(url, workers, length, client).await
     }
-    pub(crate) fn url_to_filename(url: &reqwest::Url) -> Result<String> {
-        url.path_segments()
-            .and_then(|segments| segments.last())
+
+    pub(crate) fn url_to_filename(url: &hyper::Uri) -> Result<String> {
+        url.path()
+            .split("/")
+            .last()
             .and_then(|name| {
                 if name.is_empty() {
                     None
@@ -115,12 +118,14 @@ impl Downloader {
             })
             .ok_or_else(|| ManicError::NoFilename(url.to_string()))
     }
+
     /// Enable progress reporting
     #[cfg(feature = "progress")]
     pub fn progress_bar(&mut self) -> &mut Self {
         self.pb = Some(indicatif::ProgressBar::new(self.length));
         self
     }
+
     #[cfg(feature = "progress")]
     pub fn connect_progress(&mut self, pb: ProgressBar) {
         self.pb = Some(pb);
@@ -148,7 +153,7 @@ impl Downloader {
     /// use manic::ManicError;
     /// # #[tokio::main]
     /// # async fn main() -> Result<(), ManicError> {
-    /// let client = Downloader::new("https://crates.io", 5).await?;
+    /// let client = Downloader::new("https://crates.io", 5, None).await?;
     /// let result = client.download().await?;
     /// # Ok(())
     /// # }
@@ -196,7 +201,7 @@ impl Downloader {
     /// #[tokio::main]
     /// async fn main() -> Result<(), ManicError> {
     ///     let hash = Hash::new_sha256("039058c6f2c0cb492c533b0a4d14ef77cc0f78abccced5287d84a1a2011cfb81".to_string());
-    ///     let client = Downloader::new("https://crates.io", 5).await?.verify(hash);
+    ///     let client = Downloader::new("https://crates.io", 5, None).await?.verify(hash);
     ///     client.download_and_save("~/Downloads").await?;
     ///     Ok(())
     ///  }
@@ -224,28 +229,19 @@ impl Downloader {
 
 #[instrument(skip(client, url), fields(URL=%url))]
 async fn content_length(client: &Client, url: &str) -> Result<u64> {
-    let resp = client.head(url).send().await?;
-    debug!("Response code: {}", resp.status());
-    debug!("Received HEAD response: {:?}", resp.headers());
+    let resp = client.head(url.to_string(), None).await?;
+    debug!("Response code: {}", resp.resp.status());
+    debug!("Received HEAD response: {:?}", resp.resp.headers());
     let len = resp
-        .headers()
-        .get("content-length")
+        .content_length()
         .ok_or(ManicError::NoLen);
-    if len.is_ok() && resp.status().is_success() {
-        len?.to_str()
-            .map_err(|_x| ManicError::NoLen)?
-            .parse::<u64>()
-            .map_err(|e| e.into())
+    if len.is_ok() && resp.resp.status().is_success() {
+        len
     } else {
-        let resp = client.get(url).header(RANGE, "0-0").send().await?;
-        debug!("Response code: {}", resp.status());
-        debug!("Received GET 1B response: {:?}", resp.headers());
-        resp.headers()
-            .get(CONTENT_LENGTH)
-            .ok_or(ManicError::NoLen)?
-            .to_str()?
-            .parse::<u64>()
-            .map_err(|e| e.into())
+        let resp = client.get(url.to_string(), Some(vec![(RANGE, "0-0".parse()?)])).await?;
+        debug!("Response code: {}", resp.resp.status());
+        debug!("Received GET 1B response: {:?}", resp.resp.headers());
+        resp.content_length().ok_or(ManicError::NoLen)
     }
 }
 

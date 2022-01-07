@@ -56,6 +56,12 @@ pub enum ManicError {
     JSONErr(#[from] serde_json::Error),
     #[error("UTF-8 error: {0}")]
     UTF8(#[from] std::string::FromUtf8Error),
+    #[error("Hyper HTTP error: {0}")]
+    HyperHttpErr(#[from] hyper::http::Error),
+    #[error("HeaderName error: {0}")]
+    HeaderNameErr(#[from] http::header::InvalidHeaderName),
+    #[error("HeaderValue error: {0}")]
+    HeaderValErr(#[from] http::header::InvalidHeaderValue),
 }
 
 pub type Result<T> = std::result::Result<T, ManicError>;

@@ -1,6 +1,6 @@
 use super::downloader::{join_all, join_all_futures};
-use super::Client;
-use crate::header::RANGE;
+use super::client::Client;
+use hyper::header::RANGE;
 use crate::Hash;
 use crate::{ManicError, Result};
 use futures::StreamExt;
@@ -100,14 +100,12 @@ impl Chunk {
         #[cfg(feature = "progress")] pb: Option<ProgressBar>,
     ) -> Result<Self> {
         let resp = client
-            .get(url.to_string())
-            .header(RANGE, self.bytes.clone())
-            .send()
+            .get(url.to_string(), Some(vec![(RANGE, self.bytes.clone().parse()?)]))
             .await?;
         let mut res: Vec<u8> = resp
             .bytes_stream()
             .filter_map(
-                |x: std::result::Result<bytes::Bytes, reqwest::Error>| async {
+                |x| async {
                     if let Ok(byt) = x {
                         #[cfg(feature = "progress")]
                         if let Some(bar) = &pb {
