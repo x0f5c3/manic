@@ -1,0 +1,25 @@
+[package]
+name = "manic_rsa"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+sha2 = "0.10.1"
+rand = "0.8.4"
+thiserror = "1.0.30"
+
+
+[dependencies.zeroize]
+version = "1.4.3"
+features = ["alloc"]
+
+[dependencies.rsa]
+version = "0.5.0"
+features = ["serde"]
+
+
+[dependencies.serde]
+version = "1.0.136"
+features = ["derive"]

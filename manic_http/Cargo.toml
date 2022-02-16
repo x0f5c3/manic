@@ -1,0 +1,89 @@
+[package]
+name = "manic_http"
+version = "0.8.1"
+authors = ["x0f5c3 <x0f5c3@tutanota.com>"]
+edition = "2018"
+description = "Fast and simple downloads"
+readme = "README.md"
+repository = "https://github.com/x0f5c3/manic"
+license = "MIT OR Apache-2.0"
+keywords = ["download", "http", "async"]
+categories = ["asynchronous", "web-programming::http-client", "network-programming"]
+exclude = [".idea", ".gtm"]
+
+[package.metadata.docs.rs]
+all-features = true
+default-target = "x86_64-unknown-linux-gnu"
+targets = ["x86_64-apple-darwin", "x86_64-pc-windows-msvc", "x86_64-pc-windows-gnu", "aarch64-unknown-linux-gnu"]
+
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+[features]
+default = ["rustls", "json", "progress", "async"]
+progress = ["indicatif"]
+json = ["reqwest/json"]
+rustls = ["reqwest/rustls-tls"]
+openssl = ["reqwest/native-tls"]
+threaded = ["reqwest/blocking", "rusty_pool", "rustls", "futures-channel"]
+async = ["tokio", "futures", "rustls"]
+
+[dependencies]
+url = "2.2.2"
+sha2 = "0.9.8"
+indicatif = { version = "0.16.2", optional = true }
+tracing = { version = "0.1.28", features = ["log"] }
+futures = { version = "0.3.17", optional = true }
+rayon = "1.5.1"
+derive_builder = "0.10.2"
+bytes = "1.1.0"
+thiserror = "1.0.30"
+md-5 = "0.9.1"
+
+[dependencies.futures-channel]
+version = "0.3.18"
+optional = true
+
+[dependencies.rusty_pool]
+version = "0.6.0"
+default-features = false
+optional = true
+
+[dependencies.derive_more]
+version = "0.99.16"
+default-features = false
+features = ["display", "from", "error"]
+
+[dependencies.tokio]
+version = "1.14.0"
+features = ["fs", "rt-multi-thread", "macros"]
+optional = true
+
+[dependencies.reqwest]
+version = "0.11.6"
+default-features = false
+features = ["stream"]
+
+[dependencies.serde]
+version = "1.0.133"
+features = ["derive"]
+optional = true
+
+[dev-dependencies]
+pretty_env_logger = "0.4.0"
+log = "0.4.14"
+criterion = { version = "0.3.5", features = ["async_tokio"] }
+reqwest = { version = "0.11.6", default-features = false, features = ["blocking"] }
+tempfile = "3.2.0"
+warp = "0.3.1"
+tokio = { version = "1.12.0", features = ["macros"] }
+
+[[bench]]
+name = "remote_benchmark"
+harness = false
+required-features = ["async"]
+
+[[bench]]
+name = "remote_threaded_benchmark"
+harness = false
+required-features = ["threaded"]
+
