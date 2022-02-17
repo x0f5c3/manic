@@ -10,38 +10,33 @@ pub use manic_rsa::{RsaPrivateKey, RsaPublicKey, PADDINGFUNC};
 
 use crate::files::File;
 use chacha20poly1305::XChaCha20Poly1305;
+use crc::{Crc, CRC_16_IBM_SDLC};
 use encrypted_bincode::Key;
+use manic_rsa::RsaPubKey;
 use rand_core::{OsRng, RngCore};
+use rsa::pkcs1::ToRsaPublicKey;
 use rsa::{PaddingScheme, PublicKey};
 use serde::{Deserialize, Serialize};
 use std::net::IpAddr;
-use crc::{Crc, CRC_16_IBM_SDLC};
-use rsa::pkcs1::ToRsaPublicKey;
 use uuid::Uuid;
 use zeroize::Zeroize;
-use manic_rsa::RsaPubKey;
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct RsaKeyMessage {
     crc: u16,
-    pub data: Vec<u8>
+    pub data: Vec<u8>,
 }
-
 
 impl RsaKeyMessage {
     pub fn new(data: Vec<u8>) -> Self {
         let crc = Crc::<u16>::new(&CRC_16_IBM_SDLC).checksum(&data);
-        Self {
-            crc,
-            data
-        }
+        Self { crc, data }
     }
     pub fn check_crc(&self) -> bool {
         let sum = Crc::<u16>::new(&CRC_16_IBM_SDLC).checksum(&self.data);
         sum == self.crc
     }
 }
-
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Packet {

@@ -93,18 +93,35 @@ impl Server<TcpStream> {
         if to_recv.len() != msg_len {
             anyhow!("Msg not received fully")
         }
-        let client_key: RsaPubKey = bincode::deserialize(&to_recv)?;
-        let key = RsaKey::new(client_key)?;
-        let hostname = hostname::get()?.to_str().unwrap().to_string();
-        let to_send = Packet::new(hostname.clone(), conn.peer_addr()?.to_string(), PacketType::new_rsa(key.prep_send()?)?.clone());
-        let to_send = bincode::serialize(&to_send)?;
-        conn.write_all(&to_send).await?;
-        Ok(Self {
-            rsa: key,
-            hostname,
-            remote_addr: conn.peer_addr()?.to_string(),
-            conn,
-        })
+        let client_key: Packet = bincode::deserialize(&to_recv)?;
+        if let PacketType::RSA(msg) = client_key {
+            if msg.check_crc() {
+                let mut key = RsaKey::new(None)?;
+                key.peer_key = key
+                    .decrypt(&msg.data)
+                    .ok()
+                    .and_then(|x| x.to_str().ok())
+                    .and_then(|x| RsaPublicKey::from_pkcs1_pem(x).ok().into());
+                let hostname = hostname::get()?.to_str().unwrap().to_string();
+                let to_send = Packet::new(
+                    hostname.clone(),
+                    conn.peer_addr()?.to_string(),
+                    PacketType::new_rsa(key.prep_send()?)?.clone(),
+                );
+                let to_send = bincode::serialize(&to_send)?;
+                conn.write_all(&to_send).await?;
+                Ok(Self {
+                    rsa: key,
+                    hostname,
+                    remote_addr: conn.peer_addr()?.to_string(),
+                    conn,
+                })
+            } else {
+                anyhow!("CRC check failed")
+            }
+        } else {
+            anyhow!("Wrong packet type")
+        }
     }
     pub async fn send_key(mut self) -> Result<Server<Conn>> {
         let key = Key::generate(self.hostname, self.remote_addr.clone());
@@ -145,7 +162,11 @@ impl Client<TcpStream> {
         let priv_key = RsaPrivKey::new()?;
         let mut pub_key = RsaKey::new_from_priv(priv_key, None)?;
         let hostname = hostname::get()?.to_str().unwrap().to_string();
-        let to_send = bincode::serialize(&Packet::new(hostname.clone(), url.clone(), PacketType::new_rsa(pub_key.prep_send()?)))?;
+        let to_send = bincode::serialize(&Packet::new(
+            hostname.clone(),
+            url.clone(),
+            PacketType::new_rsa(pub_key.prep_send()?),
+        ))?;
         conn.write_all(&to_send).await?;
         let mut recv_key = [0; 2048];
         let msg_len = conn.read(&mut recv_key).await?;
@@ -156,24 +177,23 @@ impl Client<TcpStream> {
         let host_key: Packet = bincode::deserialize(&key.decrypt(&recv_key)?)?;
         if let PacketType::RSA(key_msg) = host_key {
             if key_msg.check_crc() {
-                pub_key.peer_key =
+                pub_key.peer_key = pub_key
+                    .decrypt(&key_msg.data)
+                    .ok()
+                    .and_then(|x| x.to_str().ok())
+                    .and_then(|x| RsaPublicKey::from_pkcs1_pem(x).ok().into());
                 Ok(Self {
-                    rsa: key,
+                    rsa: pub_key,
                     hostname,
                     remote_addr: url,
                     conn,
                 })
-
+            } else {
+                anyhow!("CRC check failed")
             }
-
+        } else {
+            anyhow!("Wrong packet type")
         }
-        Ok(Self {
-            rsa: key,
-            server_key: host_key,
-            hostname,
-            remote_addr: url,
-            conn,
-        })
     }
     pub async fn recv_key(mut self) -> Result<Client<Conn>> {
         let enc_msg = self.rsa.encrypt(&bincode::serialize(&Packet::new(
@@ -189,7 +209,6 @@ impl Client<TcpStream> {
             let res = Client {
                 conn: Conn::new(self.conn, k.key)?,
                 hostname: self.hostname,
-                server_key: self.server_key,
                 rsa: self.rsa,
                 remote_addr: self.remote_addr,
             };

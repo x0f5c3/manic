@@ -1,5 +1,5 @@
-pub use rsa::{PaddingScheme, PublicKey, RsaPrivateKey, RsaPublicKey};
 use rsa::pkcs1::ToRsaPublicKey;
+pub use rsa::{PaddingScheme, PublicKey, RsaPrivateKey, RsaPublicKey};
 use serde::{Deserialize, Serialize};
 use sha2::Sha256;
 use thiserror::Error;
@@ -83,13 +83,16 @@ impl RsaPrivKey {
 }
 
 impl RsaKey {
-    pub fn new_from_priv(priv_key: RsaPrivKey, peer_key: Option<RsaPubKey>) -> Result<Self, RsaError> {
+    pub fn new_from_priv(
+        priv_key: RsaPrivKey,
+        peer_key: Option<RsaPubKey>,
+    ) -> Result<Self, RsaError> {
         let pub_key = RsaPubKey::from(&priv_key);
-            Ok(Self {
-                public: pub_key,
-                private: priv_key,
-                peer_key: peer_key,
-            })
+        Ok(Self {
+            public: pub_key,
+            private: priv_key,
+            peer_key: peer_key,
+        })
     }
     pub fn new(peer_key: Option<RsaPubKey>) -> Result<Self, RsaError> {
         let priv_key = RsaPrivKey::new()?;
@@ -102,9 +105,10 @@ impl RsaKey {
     }
     pub fn prep_send(&self) -> Result<Vec<u8>, RsaError> {
         let pem = self.public.0.to_pkcs1_pem()?;
-        self.peer_key.ok_or(RsaError::NoPeerKey)?.encrypt(&pem.into_bytes()).into()
-
-
+        self.peer_key
+            .ok_or(RsaError::NoPeerKey)?
+            .encrypt(&pem.into_bytes())
+            .into()
     }
     pub fn encrypt(&self, data: &[u8]) -> Result<&[u8], RsaError> {
         self.peer_key.ok_or(RsaError::NoPeerKey)?.encrypt(data)
