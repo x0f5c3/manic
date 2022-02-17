@@ -1,4 +1,5 @@
 pub use rsa::{PaddingScheme, PublicKey, RsaPrivateKey, RsaPublicKey};
+use rsa::pkcs1::ToRsaPublicKey;
 use serde::{Deserialize, Serialize};
 use sha2::Sha256;
 use thiserror::Error;
@@ -9,15 +10,17 @@ pub const PADDINGFUNC: fn() -> PaddingScheme = PaddingScheme::new_oaep::<Sha256>
 pub enum RsaError {
     #[error("RSA error: {0}")]
     RSA(#[from] rsa::errors::Error),
+    #[error("You can't encrypt to send without peer's public key")]
+    NoPeerKey,
 }
 
 #[derive(Debug)]
 pub struct RsaKey {
     pub public: RsaPubKey,
     private: RsaPrivKey,
-    pub peer_key: RsaPubKey,
+    pub peer_key: Option<RsaPubKey>,
 }
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct RsaPubKey(RsaPublicKey);
 
 impl AsRef<RsaPublicKey> for RsaPubKey {
@@ -80,7 +83,15 @@ impl RsaPrivKey {
 }
 
 impl RsaKey {
-    pub fn new(peer_key: RsaPubKey) -> Result<Self, RsaError> {
+    pub fn new_from_priv(priv_key: RsaPrivKey, peer_key: Option<RsaPubKey>) -> Result<Self, RsaError> {
+        let pub_key = RsaPubKey::from(&priv_key);
+            Ok(Self {
+                public: pub_key,
+                private: priv_key,
+                peer_key: peer_key,
+            })
+    }
+    pub fn new(peer_key: Option<RsaPubKey>) -> Result<Self, RsaError> {
         let priv_key = RsaPrivKey::new()?;
         let pub_key = RsaPubKey::from(&priv_key);
         Ok(Self {
@@ -89,8 +100,14 @@ impl RsaKey {
             peer_key,
         })
     }
+    pub fn prep_send(&self) -> Result<Vec<u8>, RsaError> {
+        let pem = self.public.0.to_pkcs1_pem()?;
+        self.peer_key.ok_or(RsaError::NoPeerKey)?.encrypt(&pem.into_bytes()).into()
+
+
+    }
     pub fn encrypt(&self, data: &[u8]) -> Result<&[u8], RsaError> {
-        self.peer_key.encrypt(data)
+        self.peer_key.ok_or(RsaError::NoPeerKey)?.encrypt(data)
     }
     pub fn decrypt(&self, data: &[u8]) -> Result<&[u8], RsaError> {
         self.private.decrypt(data)

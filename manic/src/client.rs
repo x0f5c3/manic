@@ -7,7 +7,7 @@ use manic_proto::{
 };
 use manic_proto::{ChaChaKey, Packet, PacketType, PADDINGFUNC};
 use manic_proto::{Key, RsaKey};
-use manic_rsa::{PublicKey, RsaPubKey};
+use manic_rsa::{PublicKey, RsaPrivKey, RsaPubKey};
 use rand_core::{RngCore, SeedableRng};
 use std::io::{Read, Write};
 use std::net::IpAddr;
@@ -87,16 +87,20 @@ pub struct Server<C: Net> {
 
 impl Server<TcpStream> {
     pub async fn new(mut conn: TcpStream) -> Result<Self> {
-        let mut to_recv = [0; std::mem::size_of::<RsaPublicKey>()];
-        conn.read(&mut to_recv).await?;
+        let mut to_recv = [0; 1024];
+        let msg_len = conn.read(&mut to_recv).await?;
+        let to_recv = to_recv.into_iter().take(msg_len).collect();
+        if to_recv.len() != msg_len {
+            anyhow!("Msg not received fully")
+        }
         let client_key: RsaPubKey = bincode::deserialize(&to_recv)?;
         let key = RsaKey::new(client_key)?;
-        let to_send = &key.encrypt(&bincode::serialize(&key.public)?)?;
-        conn.write_all(to_send).await?;
         let hostname = hostname::get()?.to_str().unwrap().to_string();
+        let to_send = Packet::new(hostname.clone(), conn.peer_addr()?.to_string(), PacketType::new_rsa(key.prep_send()?)?.clone());
+        let to_send = bincode::serialize(&to_send)?;
+        conn.write_all(&to_send).await?;
         Ok(Self {
             rsa: key,
-            client_key,
             hostname,
             remote_addr: conn.peer_addr()?.to_string(),
             conn,
@@ -106,8 +110,8 @@ impl Server<TcpStream> {
         let key = Key::generate(self.hostname, self.remote_addr.clone());
         let mut to_recv = [0; RSAMSGLEN];
         self.conn.read(&mut to_recv);
-        let dec = bincode::deserialize(&self.rsa.decrypt(&to_recv)?)?;
-        if &dec == b"KEY" {
+        let dec: Packet = bincode::deserialize(&self.rsa.decrypt(&to_recv)?)?;
+        if dec.into_packet() == PacketType::KeyReq {
             let to_send = Packet::new(
                 self.hostname.clone(),
                 self.remote_addr.clone(),
@@ -119,7 +123,6 @@ impl Server<TcpStream> {
             Ok(Server {
                 hostname,
                 rsa: self.rsa,
-                client_key: self.client_key,
                 remote_addr: self.remote_addr,
                 conn,
             })
@@ -139,13 +142,31 @@ pub struct Client<C: Net> {
 impl Client<TcpStream> {
     pub async fn new(url: String) -> Result<Self> {
         let mut conn = TcpStream::connect(&url).await?;
-        let key = RsaKey::new();
-        let to_send = bincode::serialize(&key.public)?;
-        conn.write_all(&to_send).await?;
+        let priv_key = RsaPrivKey::new()?;
+        let mut pub_key = RsaKey::new_from_priv(priv_key, None)?;
         let hostname = hostname::get()?.to_str().unwrap().to_string();
-        let mut recv_key = [0; std::mem::size_of::<RsaPublicKey>()];
-        conn.read(&mut recv_key).await?;
-        let host_key: RsaPublicKey = bincode::deserialize(&key.decrypt(&recv_key))?;
+        let to_send = bincode::serialize(&Packet::new(hostname.clone(), url.clone(), PacketType::new_rsa(pub_key.prep_send()?)))?;
+        conn.write_all(&to_send).await?;
+        let mut recv_key = [0; 2048];
+        let msg_len = conn.read(&mut recv_key).await?;
+        let recv_key = recv_key.into_iter().take(msg_len).collect();
+        if recv_key.len() != msg_len {
+            anyhow!("Message not received fully")
+        }
+        let host_key: Packet = bincode::deserialize(&key.decrypt(&recv_key)?)?;
+        if let PacketType::RSA(key_msg) = host_key {
+            if key_msg.check_crc() {
+                pub_key.peer_key =
+                Ok(Self {
+                    rsa: key,
+                    hostname,
+                    remote_addr: url,
+                    conn,
+                })
+
+            }
+
+        }
         Ok(Self {
             rsa: key,
             server_key: host_key,
