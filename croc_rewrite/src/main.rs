@@ -19,14 +19,14 @@ impl Comm {
         let mut header = [0; 4];
         self.comm.read(&mut header)?;
         if &header != MAGIC_BYTES {
-            Err(std::io::Error::new(ErrorKind::Other, "Magic is wrong").into())
+            return Err(std::io::Error::new(ErrorKind::Other, "Magic is wrong").into());
         }
         header = [0; 4];
         self.comm.read(&mut header)?;
         let data_size: u32 = bincode::deserialize(&header)?;
-        let mut buf: [u8] = (0..data_size).into_iter().map(|_| 0).collect();
+        let mut buf: Vec<u8> = (0..data_size).into_iter().map(|_| 0).collect();
         self.comm.read(&mut buf)?;
-        Ok(buf.to_vec())
+        Ok(buf)
     }
     fn write(&mut self, buf: &[u8]) -> Result<()> {
         let mut header = MAGIC_BYTES.clone();
@@ -49,9 +49,9 @@ enum SpakeSide {
 const WEAK_KEY: [u8; 3] = [1, 2, 3];
 fn init_curve(mut st: Comm) {
     let (s, key) = spake2::Spake2::<Ed25519Group>::start_a(
-        &Password(WEAK_KEY.to_vec()),
-        &Identity(b"server".to_vec()),
-        &Identity(b"client".to_vec()),
+        &Password::new(WEAK_KEY.to_vec()),
+        &Identity::new(b"server"),
+        &Identity::new(b"client"),
     );
     st.write(&key).unwrap();
     let bbytes = st.read().unwrap();
@@ -60,9 +60,21 @@ fn init_curve(mut st: Comm) {
     st.write(pw_hash.salt.unwrap().as_bytes()).unwrap();
 }
 
-fn new_argon2(pw: &[u8]) -> Result<PasswordHash> {
+fn new_argon2(pw: &[u8]) -> Result<ArgonPw> {
     let salt = SaltString::generate(&mut OsRng);
     let argon2 = Argon2::default();
     let pw_hash = argon2.hash_password(pw, &salt)?;
-    Ok(pw_hash)
+    Ok(ArgonPw::new(pw_hash, salt))
+}
+
+#[derive(Debug, Clone)]
+struct ArgonPw<'a> {
+    pub salt: SaltString,
+    hashed: PasswordHash<'a>,
+}
+
+impl<'a> ArgonPw<'a> {
+    pub fn new(hashed: PasswordHash<'a>, salt: SaltString) -> Self {
+        Self { salt, hashed }
+    }
 }
