@@ -6,5 +6,6 @@ members = [
 	"manic_rsa",
 	"encrypted_bincode",
 	"shared",
+	"manic_py",
 	"croc_rewrite"
 ]

@@ -10,6 +10,8 @@ tokio-serde = "0.8.0"
 tokio-util = { version = "0.6.9", features = ["full"] }
 serde = { version = "*", features = ["derive"] }
 serde-encrypt = "0.6.0"
+spake2 = "0.3.1"
+argon2 = "*"
 bincode = "*"
 thiserror = "1.0.30"
 bytes = "1.1.0"

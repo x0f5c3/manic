@@ -9,6 +9,7 @@ use std::fmt::Debug;
 use std::io;
 use std::io::ErrorKind;
 use std::marker::PhantomData;
+use std::net::TcpStream;
 use std::pin::Pin;
 use tokio_serde::{Deserializer, Serializer};
 use zeroize::Zeroize;
@@ -124,4 +125,9 @@ impl Zeroize for Key {
         self.key.zeroize();
         self.ip.zeroize();
     }
+}
+
+pub fn start_codec<T>(
+    st: &mut TcpStream,
+) -> Result<EncryptedBincode<T>, Box<dyn std::error::Error>> {
 }
