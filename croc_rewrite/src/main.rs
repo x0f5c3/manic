@@ -6,6 +6,7 @@ use argon2::{
 use spake2::{Ed25519Group, Identity, Password};
 use std::io::{ErrorKind, Read, Write};
 use std::net::TcpStream;
+use argon2::password_hash::Salt;
 
 const MAGIC_BYTES: &[u8; 4] = b"croc";
 
@@ -47,7 +48,7 @@ enum SpakeSide {
 }
 
 const WEAK_KEY: [u8; 3] = [1, 2, 3];
-fn init_curve(mut st: Comm) {
+fn init_curve_a(mut st: Comm) {
     let (s, key) = spake2::Spake2::<Ed25519Group>::start_a(
         &Password::new(WEAK_KEY.to_vec()),
         &Identity::new(b"server"),
@@ -56,25 +57,38 @@ fn init_curve(mut st: Comm) {
     st.write(&key).unwrap();
     let bbytes = st.read().unwrap();
     let strong_key = s.finish(&bbytes).unwrap();
-    let pw_hash = new_argon2(&strong_key).unwrap();
-    st.write(pw_hash.salt.unwrap().as_bytes()).unwrap();
+    let pw_hash = ArgonPw::new(&strong_key);
+    st.write(pw_hash.salt().unwrap().as_bytes()).unwrap();
 }
 
-fn new_argon2(pw: &[u8]) -> Result<ArgonPw> {
-    let salt = SaltString::generate(&mut OsRng);
-    let argon2 = Argon2::default();
-    let pw_hash = argon2.hash_password(pw, &salt)?;
-    Ok(ArgonPw::new(pw_hash, salt))
+fn init_curve_b(mut st: Comm) {
+    let (s, key) = spake2::Spake2::<Ed25519Group>::start_b(
+        &Password::new(WEAK_KEY.to_vec()),
+        &Identity::new(b"server"),
+        &Identity::new(b"client"),
+    );
+    let bbytes = st.read().unwrap();
+    let strong_key = s.finish(&bbytes).unwrap();
+    st.write(&key).unwrap();
+    let pw_hash = ArgonPw::new(&strong_key);
+    st.write(pw_hash.salt().unwrap().as_bytes()).unwrap();
 }
+
 
 #[derive(Debug, Clone)]
 struct ArgonPw<'a> {
-    pub salt: SaltString,
     hashed: PasswordHash<'a>,
 }
 
 impl<'a> ArgonPw<'a> {
-    pub fn new(hashed: PasswordHash<'a>, salt: SaltString) -> Self {
-        Self { salt, hashed }
+    pub fn new(pw: &[u8]) -> Self {
+        let salt = SaltString::generate(&mut OsRng);
+        let pw_hash = Argon2::default().hash_password(pw, &salt).unwrap();
+        Self {
+            hashed: pw_hash,
+        }
+    }
+    pub fn salt(&self) -> Option<Salt> {
+        self.hashed.salt
     }
 }

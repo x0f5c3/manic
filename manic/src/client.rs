@@ -8,9 +8,12 @@ use manic_proto::{
 use manic_proto::{ChaChaKey, Packet, PacketType, PADDINGFUNC};
 use manic_proto::{Key, RsaKey};
 use manic_rsa::{PublicKey, RsaPrivKey, RsaPubKey};
-use rand_core::{RngCore, SeedableRng};
-use std::io::{Read, Write};
-use std::net::IpAddr;
+use rand_core::{OsRng, RngCore, SeedableRng};
+use std::io::{ErrorKind, Read, Write};
+use std::net::{IpAddr};
+use argon2::{Argon2, PasswordHasher};
+use argon2::password_hash::SaltString;
+use spake2::{Ed25519Group, Identity, Password};
 use tokio::io::{AsyncRead, AsyncReadExt, AsyncWrite, AsyncWriteExt};
 use tokio::net::tcp::OwnedReadHalf;
 use tokio::net::tcp::OwnedWriteHalf;
@@ -20,6 +23,9 @@ use tokio_serde::{Framed, SymmetricallyFramed};
 use tokio_util::codec::{FramedRead, FramedWrite, LengthDelimitedCodec};
 
 const RSAMSGLEN: usize = 512;
+
+
+const WEAK_KEY: [u8; 3] = [1, 2, 3];
 
 type Writer = Framed<
     FramedWrite<OwnedWriteHalf, LengthDelimitedCodec>,
@@ -35,7 +41,70 @@ type Reader = Framed<
     EncryptedBincode<Packet, Packet>,
 >;
 
+const MAGIC_BYTES: &[u8; 4] = b"croc";
+
 pub trait Net {}
+
+
+pub struct StdConn(TcpStream);
+
+
+impl StdConn {
+    async fn read(&mut self) -> Result<Vec<u8>> {
+        let mut header = [0; 4];
+        self.0.read(&mut header).await?;
+        if &header != MAGIC_BYTES {
+            anyhow::anyhow!("Magic is wrong")
+        }
+        header = [0; 4];
+        self.0.read(&mut header).await?;
+        let data_size: u32 = bincode::deserialize(&header)?;
+        let mut buf: Vec<u8> = (0..data_size).into_iter().map(|_| 0).collect();
+        self.0.read(&mut buf).await?;
+        Ok(buf)
+    }
+    async fn write(&mut self, buf: &[u8]) -> Result<()> {
+        let mut header = MAGIC_BYTES.clone();
+        self.0.write(&header).await?;
+        let data_size = buf.len() as u32;
+        self.0.write(&bincode::serialize(&data_size)?).await?;
+        Ok(())
+    }
+    async fn init_curve_a(mut self) -> Result<Conn> {
+        let (s, key) = spake2::Spake2::<Ed25519Group>::start_a(
+            &Password::new(WEAK_KEY.to_vec()),
+            &Identity::new(b"server"),
+            &Identity::new(b"client"),
+        );
+        self.write(&key).await?;
+        let bbytes = self.read().await?;
+        let strong_key = s.finish(&bbytes)?;
+        let pw_hash = new_argon(&strong_key)?;
+        self.write(pw_hash.salt.context("No salt")?.as_bytes()).await?;
+        Conn::new(self.0, pw_hash.to_string().as_bytes().to_vec())
+    }
+
+    async fn init_curve_b(mut self) -> Result<Conn> {
+        let (s, key) = spake2::Spake2::<Ed25519Group>::start_b(
+            &Password::new(WEAK_KEY.to_vec()),
+            &Identity::new(b"server"),
+            &Identity::new(b"client"),
+        );
+        let bbytes = self.read().unwrap();
+        let strong_key = s.finish(&bbytes).unwrap();
+        self.write(&key).unwrap();
+        let pw_hash = new_argon(&strong_key)?;
+        self.write(pw_hash.salt.context("No salt")?.as_bytes()).await?;
+        Conn::new(self.0, pw_hash.to_string().as_bytes().to_vec())
+    }
+}
+
+pub fn new_argon<'a>(pw: &[u8]) -> Result<argon2::PasswordHash<'a>> {
+    let salt = SaltString::generate(&mut OsRng);
+    Argon2::default().hash_password(pw, &salt).context("Failed to hash the password")
+}
+
+impl Net for StdConn {}
 
 impl Net for TcpStream {}
 
