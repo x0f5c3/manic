@@ -8,4 +8,5 @@ members = [
 	"shared",
 	"croc_rewrite",
 	"mnemonicode",
+	"manic_py",
 ]
