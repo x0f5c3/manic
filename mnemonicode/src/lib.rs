@@ -392,3 +392,12 @@ pub fn encode_wordlist(src: &[u8]) -> Vec<String> {
     }
     res.into_iter().map(|x| x.to_string()).collect()
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    #[test]
+    fn gen_four() {
+        (0..=4).into_iter().for_each(|_| eprintln!("{}", gen_random_name()))
+    }
+}

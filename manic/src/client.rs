@@ -70,9 +70,9 @@ impl StdConn {
         self.0.write(&bincode::serialize(&data_size)?).await?;
         Ok(())
     }
-    async fn init_curve_a(mut self) -> Result<Conn> {
+    async fn init_curve_a(mut self, shared: String) -> Result<Conn> {
         let (s, key) = spake2::Spake2::<Ed25519Group>::start_a(
-            &Password::new(WEAK_KEY.to_vec()),
+            &Password::new(shared),
             &Identity::new(b"server"),
             &Identity::new(b"client"),
         );
@@ -84,9 +84,9 @@ impl StdConn {
         Conn::new(self.0, pw_hash.to_string().as_bytes().to_vec())
     }
 
-    async fn init_curve_b(mut self) -> Result<Conn> {
+    async fn init_curve_b(mut self, shared: String) -> Result<Conn> {
         let (s, key) = spake2::Spake2::<Ed25519Group>::start_b(
-            &Password::new(WEAK_KEY.to_vec()),
+            &Password::new(shared),
             &Identity::new(b"server"),
             &Identity::new(b"client"),
         );
