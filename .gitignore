@@ -2,3 +2,4 @@
 Cargo.lock
 .gtm
 /.idea
+.DS_Store
