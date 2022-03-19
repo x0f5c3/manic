@@ -1,24 +1,28 @@
-mod tcp;
 mod error;
+mod tcp;
 
+use crate::error::CodecError;
+use argon2::password_hash::SaltString;
+use argon2::{Argon2, PasswordHasher};
 use bytes::{Bytes, BytesMut};
 use chacha20poly1305::Key as ChaChaKey;
 use chacha20poly1305::{aead::Aead, aead::NewAead, XChaCha20Poly1305, XNonce};
+use error::Result;
+use futures::{SinkExt, StreamExt};
 use log::debug;
 use rand_chacha::ChaCha20Rng;
 use rand_core::{OsRng, RngCore, SeedableRng};
 use serde::{Deserialize, Serialize};
+use spake2::{Ed25519Group, Identity, Password};
 use std::fmt::Debug;
 use std::io;
-use std::io::{ErrorKind, Read};
+use std::io::{ErrorKind, Read, Write};
 use std::marker::PhantomData;
-use std::net::TcpStream;
 use std::pin::Pin;
-use argon2::{Argon2, PasswordHasher};
-use argon2::password_hash::SaltString;
-use spake2::{Ed25519Group, Identity, Password};
+use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::tcp::{OwnedReadHalf, OwnedWriteHalf};
-use tokio_serde::{Deserializer, Framed, Serializer};
+use tokio::net::TcpStream;
+use tokio_serde::{Deserializer, Framed, Serializer, SymmetricallyFramed};
 use tokio_util::codec::{FramedRead, FramedWrite, LengthDelimitedCodec};
 use zeroize::Zeroize;
 
@@ -55,9 +59,9 @@ impl<Item, SinkItem> Serializer<SinkItem> for EncryptedBincode<Item, SinkItem>
 where
     SinkItem: Serialize + Debug,
 {
-    type Error = io::Error;
+    type Error = CodecError;
 
-    fn serialize(self: Pin<&mut Self>, item: &SinkItem) -> Result<Bytes, Self::Error> {
+    fn serialize(self: Pin<&mut Self>, item: &SinkItem) -> std::result::Result<Bytes, Self::Error> {
         let mut nonce = XNonce::default();
         let mut rng = ChaCha20Rng::from_entropy();
         rng.fill_bytes(&mut nonce);
@@ -84,11 +88,11 @@ where
     Item: Debug,
     for<'a> Item: Deserialize<'a>,
 {
-    type Error = io::Error;
+    type Error = CodecError;
 
-    fn deserialize(self: Pin<&mut Self>, src: &BytesMut) -> Result<Item, Self::Error> {
+    fn deserialize(self: Pin<&mut Self>, src: &BytesMut) -> std::result::Result<Item, Self::Error> {
         if src.len() < 25 {
-            return Err(io::Error::new(ErrorKind::InvalidData, "Too short"));
+            return Err(CodecError::TooShort(src.len()));
         }
         debug!("To decrypt: {:?}", src);
         let key = ChaChaKey::from_slice(self.key.as_slice());
@@ -135,25 +139,17 @@ impl Zeroize for Key {
     }
 }
 
-pub fn start_codec<T>(
-    st: &mut TcpStream,
-) -> Result<EncryptedBincode<T>, Box<dyn std::error::Error>> {
-}
+// pub fn start_codec<T>(
+//     st: &mut TcpStream,
+// ) -> Result<EncryptedBincode<T>> {
+// }
 pub struct StdConn(TcpStream);
 
-type Writer<T> = Framed<
-    FramedWrite<OwnedWriteHalf, LengthDelimitedCodec>,
-    T,
-    T,
-    EncryptedBincode<T, T>,
->;
+type Writer<T> =
+    Framed<FramedWrite<OwnedWriteHalf, LengthDelimitedCodec>, T, T, EncryptedBincode<T, T>>;
 
-type Reader<T> = Framed<
-    FramedRead<OwnedReadHalf, LengthDelimitedCodec>,
-    T,
-    T,
-    EncryptedBincode<T, T>,
->;
+type Reader<T> =
+    Framed<FramedRead<OwnedReadHalf, LengthDelimitedCodec>, T, T, EncryptedBincode<T, T>>;
 
 const MAGIC_BYTES: &[u8; 4] = b"croc";
 
@@ -162,7 +158,7 @@ impl StdConn {
         let mut header = [0; 4];
         self.0.read(&mut header).await?;
         if &header != MAGIC_BYTES {
-            anyhow::anyhow!("Magic is wrong")
+            Err(CodecError::MagicBytes(header))
         }
         header = [0; 4];
         self.0.read(&mut header).await?;
@@ -178,7 +174,7 @@ impl StdConn {
         self.0.write(&bincode::serialize(&data_size)?).await?;
         Ok(())
     }
-    async fn init_curve_a(mut self, shared: String) -> Result<Conn> {
+    async fn init_curve_a<T>(mut self, shared: String) -> Result<Conn<T>> {
         let (s, key) = spake2::Spake2::<Ed25519Group>::start_a(
             &Password::new(shared),
             &Identity::new(b"server"),
@@ -188,63 +184,59 @@ impl StdConn {
         let bbytes = self.read().await?;
         let strong_key = s.finish(&bbytes)?;
         let pw_hash = new_argon(&strong_key)?;
-        self.write(pw_hash.salt.context("No salt")?.as_bytes()).await?;
+        self.write(pw_hash.salt.ok_or(CodecError::NOSalt)?.as_bytes())
+            .await?;
         Conn::new(self.0, pw_hash.to_string().as_bytes().to_vec())
     }
 
-    async fn init_curve_b(mut self, shared: String) -> Result<Conn> {
+    async fn init_curve_b<T>(mut self, shared: String) -> Result<Conn<T>> {
         let (s, key) = spake2::Spake2::<Ed25519Group>::start_b(
             &Password::new(shared),
             &Identity::new(b"server"),
             &Identity::new(b"client"),
         );
-        let bbytes = self.read().unwrap();
+        let bbytes = self.read().await?;
         let strong_key = s.finish(&bbytes).unwrap();
-        self.write(&key).unwrap();
+        self.write(&key).await?;
         let pw_hash = new_argon(&strong_key)?;
-        self.write(pw_hash.salt.context("No salt")?.as_bytes()).await?;
+        self.write(pw_hash.salt.ok_or(CodecError::NOSalt)?.as_bytes())
+            .await?;
         Conn::new(self.0, pw_hash.to_string().as_bytes().to_vec())
     }
 }
 
 pub fn new_argon<'a>(pw: &[u8]) -> Result<argon2::PasswordHash<'a>> {
     let salt = SaltString::generate(&mut OsRng);
-    Argon2::default().hash_password(pw, &salt).context("Failed to hash the password")
+    Argon2::default()
+        .hash_password(pw, &salt)
+        .map_err(|e| CodecError::PWHash(e))
 }
 
-pub struct Conn {
-    encoded_send: Writer,
-    encoded_recv: Reader,
+pub struct Conn<T> {
+    encoded_send: Writer<T>,
+    encoded_recv: Reader<T>,
 }
 
-impl Conn {
+impl<T> Conn<T> {
     pub fn new(conn: TcpStream, key: Vec<u8>) -> Result<Self> {
         let (read, write) = conn.into_split();
         let len_delim = FramedWrite::new(write, LengthDelimitedCodec::new());
 
         let mut ser = SymmetricallyFramed::new(
             len_delim,
-            SymmetricalEncryptedBincode::<Packet>::new(key.clone()),
+            SymmetricalEncryptedBincode::<T>::new(key.clone()),
         );
         let len_read = FramedRead::new(read, LengthDelimitedCodec::new());
-        let mut de =
-            SymmetricallyFramed::new(len_read, SymmetricalEncryptedBincode::<Packet>::new(key));
+        let mut de = SymmetricallyFramed::new(len_read, SymmetricalEncryptedBincode::<T>::new(key));
         Ok(Self {
             encoded_send: ser.into(),
             encoded_recv: de.into(),
         })
     }
-    pub async fn send(&mut self, packet: Packet) -> Result<()> {
-        self.encoded_send
-            .send(packet)
-            .await
-            .context("Failed to send packet")
+    pub async fn send(&mut self, packet: T) -> Result<()> {
+        self.encoded_send.send(packet).await.into()
     }
-    pub async fn recv(&mut self) -> Result<Packet> {
-        self.encoded_recv
-            .next()
-            .await
-            .context("Failed to receive")?
-            .context("Failed to parse")
+    pub async fn recv(&mut self) -> Result<T> {
+        self.encoded_recv.next().await.into()
     }
 }
