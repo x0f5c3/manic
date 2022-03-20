@@ -1,4 +1,5 @@
 use anyhow::Result;
+use argon2::password_hash::Salt;
 use argon2::{
     password_hash::{rand_core::OsRng, PasswordHash, PasswordHasher, SaltString},
     Argon2,
@@ -6,7 +7,6 @@ use argon2::{
 use spake2::{Ed25519Group, Identity, Password};
 use std::io::{ErrorKind, Read, Write};
 use std::net::TcpStream;
-use argon2::password_hash::Salt;
 
 const MAGIC_BYTES: &[u8; 4] = b"croc";
 
@@ -74,7 +74,6 @@ fn init_curve_b(mut st: Comm) {
     st.write(pw_hash.salt().unwrap().as_bytes()).unwrap();
 }
 
-
 #[derive(Debug, Clone)]
 struct ArgonPw<'a> {
     hashed: PasswordHash<'a>,
@@ -84,9 +83,7 @@ impl<'a> ArgonPw<'a> {
     pub fn new(pw: &[u8]) -> Self {
         let salt = SaltString::generate(&mut OsRng);
         let pw_hash = Argon2::default().hash_password(pw, &salt).unwrap();
-        Self {
-            hashed: pw_hash,
-        }
+        Self { hashed: pw_hash }
     }
     pub fn salt(&self) -> Option<Salt> {
         self.hashed.salt

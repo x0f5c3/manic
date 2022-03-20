@@ -4,11 +4,9 @@ members = [
 	"manic_http",
 	"manic_proto",
 	"manic_rsa",
-	"encrypted_bincode",
-	"shared",
+    "conn",
 	"croc_rewrite",
 	"mnemonicode",
 	"manic_py",
 	"manicdrop",
-	"tcp",
 ]

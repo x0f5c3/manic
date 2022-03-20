@@ -1,4 +1,6 @@
 use anyhow::{anyhow, Context, Result};
+use argon2::password_hash::SaltString;
+use argon2::{Argon2, PasswordHasher};
 use futures::sink::SinkExt;
 use futures::StreamExt;
 use manic_proto::PacketType::Key;
@@ -9,11 +11,9 @@ use manic_proto::{ChaChaKey, Packet, PacketType, PADDINGFUNC};
 use manic_proto::{Key, RsaKey};
 use manic_rsa::{PublicKey, RsaPrivKey, RsaPubKey};
 use rand_core::{OsRng, RngCore, SeedableRng};
-use std::io::{ErrorKind, Read, Write};
-use std::net::{IpAddr};
-use argon2::{Argon2, PasswordHasher};
-use argon2::password_hash::SaltString;
 use spake2::{Ed25519Group, Identity, Password};
+use std::io::{ErrorKind, Read, Write};
+use std::net::IpAddr;
 use tokio::io::{AsyncRead, AsyncReadExt, AsyncWrite, AsyncWriteExt};
 use tokio::net::tcp::OwnedReadHalf;
 use tokio::net::tcp::OwnedWriteHalf;
@@ -23,7 +23,6 @@ use tokio_serde::{Framed, SymmetricallyFramed};
 use tokio_util::codec::{FramedRead, FramedWrite, LengthDelimitedCodec};
 
 const RSAMSGLEN: usize = 512;
-
 
 const WEAK_KEY: [u8; 3] = [1, 2, 3];
 
@@ -45,9 +44,7 @@ const MAGIC_BYTES: &[u8; 4] = b"croc";
 
 pub trait Net {}
 
-
 pub struct StdConn(TcpStream);
-
 
 impl StdConn {
     async fn read(&mut self) -> Result<Vec<u8>> {
@@ -80,7 +77,8 @@ impl StdConn {
         let bbytes = self.read().await?;
         let strong_key = s.finish(&bbytes)?;
         let pw_hash = new_argon(&strong_key)?;
-        self.write(pw_hash.salt.context("No salt")?.as_bytes()).await?;
+        self.write(pw_hash.salt.context("No salt")?.as_bytes())
+            .await?;
         Conn::new(self.0, pw_hash.to_string().as_bytes().to_vec())
     }
 
@@ -94,14 +92,17 @@ impl StdConn {
         let strong_key = s.finish(&bbytes).unwrap();
         self.write(&key).unwrap();
         let pw_hash = new_argon(&strong_key)?;
-        self.write(pw_hash.salt.context("No salt")?.as_bytes()).await?;
+        self.write(pw_hash.salt.context("No salt")?.as_bytes())
+            .await?;
         Conn::new(self.0, pw_hash.to_string().as_bytes().to_vec())
     }
 }
 
 pub fn new_argon<'a>(pw: &[u8]) -> Result<argon2::PasswordHash<'a>> {
     let salt = SaltString::generate(&mut OsRng);
-    Argon2::default().hash_password(pw, &salt).context("Failed to hash the password")
+    Argon2::default()
+        .hash_password(pw, &salt)
+        .context("Failed to hash the password")
 }
 
 impl Net for StdConn {}

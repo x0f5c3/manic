@@ -1,8 +1,5 @@
 use mnemonicode::gen_random_name;
 
-
-
-
 fn main() {
     (0..4).into_iter().for_each(|x| {
         let gened = gen_random_name();
