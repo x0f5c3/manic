@@ -3,6 +3,8 @@ extern crate core;
 
 mod files;
 mod lists;
+mod codec;
+mod error;
 
 pub use encrypted_bincode::{EncryptedBincode, SymmetricalEncryptedBincode};
 pub use manic_rsa::RsaKey;

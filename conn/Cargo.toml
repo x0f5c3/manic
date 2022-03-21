@@ -11,7 +11,7 @@ tokio-util = { version = "0.6.9", features = ["full"] }
 serde = { version = "*", features = ["derive"] }
 serde-encrypt = "0.6.0"
 spake2 = "0.3.1"
-argon2 = "*"
+argon2 = "0.4.0"
 bincode = "*"
 thiserror = "1.0.30"
 bytes = "1.1.0"
@@ -29,3 +29,4 @@ rsa = { version = "0.5.0", features = ["serde", "pkcs5"] }
 sha2 = "0.10.1"
 sha1 = "0.10.0"
 rand = "0.8.4"
+manic_proto = { path = "../manic_proto"}
