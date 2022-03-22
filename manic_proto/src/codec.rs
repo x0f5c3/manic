@@ -3,35 +3,38 @@ use bytes::{Bytes, BytesMut};
 use chacha20poly1305::{XChaCha20Poly1305, XNonce};
 use log::debug;
 use rand_chacha::ChaCha20Rng;
+use chacha20poly1305::Key as ChaChaKey;
 use rand_core::{RngCore, SeedableRng};
 use serde::{Deserialize, Serialize};
 use std::fmt::Debug;
 use std::marker::PhantomData;
 use std::pin::Pin;
-use tokio_serde::{Deserializer, Serializer};
+use tokio::net::tcp::{OwnedReadHalf, OwnedWriteHalf};
+use tokio_serde::{Deserializer, Framed, Serializer};
+use tokio_util::codec::{FramedRead, FramedWrite, LengthDelimitedCodec};
 use zeroize::Zeroize;
 
-pub type SymmetricalEncryptedBincode<T> = EncryptedBincode<T, T>;
+pub type SymmetricalCodec<T> = Codec<T, T>;
 
 #[derive(Clone, Debug)]
-pub struct EncryptedBincode<Item, SinkItem> {
+pub struct Codec<Item, SinkItem> {
     key: Vec<u8>,
     ghost: PhantomData<(Item, SinkItem)>,
 }
 
-impl<I, S> Zeroize for EncryptedBincode<I, S> {
+impl<I, S> Zeroize for Codec<I, S> {
     fn zeroize(&mut self) {
         self.key.zeroize()
     }
 }
 
-impl<I, S> Drop for EncryptedBincode<I, S> {
+impl<I, S> Drop for Codec<I, S> {
     fn drop(&mut self) {
         self.key.zeroize();
     }
 }
 
-impl<Item, SinkItem> EncryptedBincode<Item, SinkItem> {
+impl<Item, SinkItem> Codec<Item, SinkItem> {
     pub fn new(key: Vec<u8>) -> Self {
         Self {
             key,
@@ -40,7 +43,7 @@ impl<Item, SinkItem> EncryptedBincode<Item, SinkItem> {
     }
 }
 
-impl<Item, SinkItem> Serializer<SinkItem> for EncryptedBincode<Item, SinkItem>
+impl<Item, SinkItem> Serializer<SinkItem> for Codec<Item, SinkItem>
 where
     SinkItem: Serialize + Debug,
 {
@@ -62,7 +65,7 @@ where
     }
 }
 
-impl<Item, SinkItem> Deserializer<Item> for EncryptedBincode<Item, SinkItem>
+impl<Item, SinkItem> Deserializer<Item> for Codec<Item, SinkItem>
 where
     Item: Debug,
     for<'a> Item: Deserialize<'a>,
@@ -83,3 +86,8 @@ where
         Ok(res)
     }
 }
+
+pub type Writer<T> = Framed<FramedWrite<OwnedWriteHalf, LengthDelimitedCodec>, T, T, Codec<T, T>>;
+
+pub type Reader<T> =
+Framed<FramedRead<OwnedReadHalf, LengthDelimitedCodec>, T, T, Codec<T, T>>;

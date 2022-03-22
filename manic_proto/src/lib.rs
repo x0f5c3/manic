@@ -8,6 +8,7 @@ mod error;
 
 pub use encrypted_bincode::{EncryptedBincode, SymmetricalEncryptedBincode};
 pub use manic_rsa::RsaKey;
+pub use codec::{SymmetricalCodec, Codec, Reader, Writer};
 pub use manic_rsa::{RsaPrivateKey, RsaPublicKey, PADDINGFUNC};
 
 use crate::files::File;

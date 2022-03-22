@@ -11,6 +11,7 @@ use error::Result;
 use futures::{SinkExt, StreamExt};
 use log::debug;
 use rand_chacha::ChaCha20Rng;
+use manic_proto::Packet;
 use rand_core::{OsRng, RngCore, SeedableRng};
 use serde::{Deserialize, Serialize};
 use spake2::{Ed25519Group, Identity, Password};
@@ -63,11 +64,9 @@ impl Zeroize for Key {
 // }
 pub struct StdConn(TcpStream);
 
-type Writer<T> =
-    Framed<FramedWrite<OwnedWriteHalf, LengthDelimitedCodec>, T, T, EncryptedBincode<T, T>>;
+type Writer = manic_proto::Writer<Packet>;
 
-type Reader<T> =
-    Framed<FramedRead<OwnedReadHalf, LengthDelimitedCodec>, T, T, EncryptedBincode<T, T>>;
+type Reader = manic_proto::Reader<Packet>;
 
 const MAGIC_BYTES: &[u8; 4] = b"croc";
 
@@ -92,7 +91,7 @@ impl StdConn {
         self.0.write(&bincode::serialize(&data_size)?).await?;
         Ok(())
     }
-    async fn init_curve_a<T>(mut self, shared: String) -> Result<Conn<T>> {
+    async fn init_curve_a(mut self, shared: String) -> Result<Conn> {
         let (s, key) = spake2::Spake2::<Ed25519Group>::start_a(
             &Password::new(shared),
             &Identity::new(b"server"),
@@ -107,7 +106,7 @@ impl StdConn {
         Conn::new(self.0, pw_hash.to_string().as_bytes().to_vec())
     }
 
-    async fn init_curve_b<T>(mut self, shared: String) -> Result<Conn<T>> {
+    async fn init_curve_b(mut self, shared: String) -> Result<Conn> {
         let (s, key) = spake2::Spake2::<Ed25519Group>::start_b(
             &Password::new(shared),
             &Identity::new(b"server"),
@@ -127,15 +126,15 @@ pub fn new_argon<'a>(pw: &[u8]) -> Result<argon2::PasswordHash<'a>> {
     let salt = SaltString::generate(&mut OsRng);
     Argon2::default()
         .hash_password(pw, &salt)
-        .map_err(|e| CodecError::PWHash(e))
+        .map_err(|e| CodecError::from(e))
 }
 
-pub struct Conn<T> {
-    encoded_send: Writer<T>,
-    encoded_recv: Reader<T>,
+pub struct Conn {
+    encoded_send: Writer,
+    encoded_recv: Reader,
 }
 
-impl<T> Conn<T> {
+impl Conn {
     pub fn new(conn: TcpStream, key: Vec<u8>) -> Result<Self> {
         let (read, write) = conn.into_split();
         let len_delim = FramedWrite::new(write, LengthDelimitedCodec::new());
