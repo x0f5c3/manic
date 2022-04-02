@@ -8,7 +8,6 @@ edition = "2021"
 [dependencies]
 manic_http = { path = "../manic_http", features = ["threaded", "progress"], default-features=false }
 manic_proto = { path = "../manic_proto"}
-manic_rsa = { path = "../manic_rsa" }
 structopt = {version = "*", features = ["paw"] }
 paw = "1.0.0"
 anyhow = "*"

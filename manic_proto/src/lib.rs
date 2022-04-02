@@ -6,16 +6,11 @@ mod lists;
 mod codec;
 mod error;
 
-pub use encrypted_bincode::{EncryptedBincode, SymmetricalEncryptedBincode};
-pub use manic_rsa::RsaKey;
 pub use codec::{SymmetricalCodec, Codec, Reader, Writer};
-pub use manic_rsa::{RsaPrivateKey, RsaPublicKey, PADDINGFUNC};
 
 use crate::files::File;
 use chacha20poly1305::XChaCha20Poly1305;
 use crc::{Crc, CRC_16_IBM_SDLC};
-use encrypted_bincode::Key;
-use manic_rsa::RsaPubKey;
 use rand_core::{OsRng, RngCore};
 use rsa::pkcs1::ToRsaPublicKey;
 use rsa::{PaddingScheme, PublicKey};
@@ -62,16 +57,12 @@ impl Packet {
 
 #[derive(Serialize, Deserialize, Debug)]
 pub enum PacketType {
-    Key(Key),
     RSA(RsaKeyMessage),
     File(File),
     KeyReq,
 }
 
 impl PacketType {
-    pub fn new_key(key: Key) -> Self {
-        Self::Key(key)
-    }
     pub fn new_rsa(key: Vec<u8>) -> Self {
         Self::RSA(RsaKeyMessage::new(key))
     }
@@ -83,14 +74,6 @@ impl PacketType {
     }
 }
 
-impl Zeroize for PacketType {
-    fn zeroize(&mut self) {
-        match self {
-            Self::Key(s) => s.zeroize(),
-            _ => {}
-        }
-    }
-}
 
 #[derive(Serialize, Debug, Deserialize, Clone)]
 pub struct Header {
@@ -115,9 +98,3 @@ impl Zeroize for Header {
     }
 }
 
-impl Zeroize for Packet {
-    fn zeroize(&mut self) {
-        self.header.zeroize();
-        self.packet.zeroize();
-    }
-}

@@ -1,6 +1,6 @@
 use crate::error::CodecError;
 use bytes::{Bytes, BytesMut};
-use chacha20poly1305::{XChaCha20Poly1305, XNonce};
+use chacha20poly1305::{XChaCha20Poly1305, XNonce, aead::NewAead};
 use log::debug;
 use rand_chacha::ChaCha20Rng;
 use chacha20poly1305::Key as ChaChaKey;
@@ -9,8 +9,10 @@ use serde::{Deserialize, Serialize};
 use std::fmt::Debug;
 use std::marker::PhantomData;
 use std::pin::Pin;
+use chacha20poly1305::aead::Aead;
 use tokio::net::tcp::{OwnedReadHalf, OwnedWriteHalf};
-use tokio_serde::{Deserializer, Framed, Serializer};
+use tokio::net::TcpStream;
+use tokio_serde::{Deserializer, Framed, Serializer, SymmetricallyFramed};
 use tokio_util::codec::{FramedRead, FramedWrite, LengthDelimitedCodec};
 use zeroize::Zeroize;
 
@@ -87,7 +89,7 @@ where
     }
 }
 
-pub type Writer<T> = Framed<FramedWrite<OwnedWriteHalf, LengthDelimitedCodec>, T, T, Codec<T, T>>;
+pub type Writer<T> = SymmetricallyFramed<FramedWrite<TcpStream, LengthDelimitedCodec>, T, Codec<T, T>>;
 
 pub type Reader<T> =
-Framed<FramedRead<OwnedReadHalf, LengthDelimitedCodec>, T, T, Codec<T, T>>;
+SymmetricallyFramed<FramedRead<TcpStream, LengthDelimitedCodec>, T, Codec<T, T>>;

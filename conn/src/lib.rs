@@ -11,7 +11,7 @@ use error::Result;
 use futures::{SinkExt, StreamExt};
 use log::debug;
 use rand_chacha::ChaCha20Rng;
-use manic_proto::Packet;
+use manic_proto::{Packet, SymmetricalCodec};
 use rand_core::{OsRng, RngCore, SeedableRng};
 use serde::{Deserialize, Serialize};
 use spake2::{Ed25519Group, Identity, Password};
@@ -75,7 +75,7 @@ impl StdConn {
         let mut header = [0; 4];
         self.0.read(&mut header).await?;
         if &header != MAGIC_BYTES {
-            Err(CodecError::MagicBytes(header))
+            return Err(CodecError::MagicBytes(header))
         }
         header = [0; 4];
         self.0.read(&mut header).await?;
@@ -136,24 +136,26 @@ pub struct Conn {
 
 impl Conn {
     pub fn new(conn: TcpStream, key: Vec<u8>) -> Result<Self> {
-        let (read, write) = conn.into_split();
+        let std = conn.into_std()?;
+        let write = TcpStream::from_std(std.try_clone()?)?;
+        let read = TcpStream::from_std(std)?;
         let len_delim = FramedWrite::new(write, LengthDelimitedCodec::new());
 
         let mut ser = SymmetricallyFramed::new(
             len_delim,
-            SymmetricalEncryptedBincode::<T>::new(key.clone()),
+            SymmetricalCodec::<Packet>::new(key.clone()),
         );
         let len_read = FramedRead::new(read, LengthDelimitedCodec::new());
-        let mut de = SymmetricallyFramed::new(len_read, SymmetricalEncryptedBincode::<T>::new(key));
+        let mut de = SymmetricallyFramed::new(len_read, SymmetricalCodec::<Packet>::new(key));
         Ok(Self {
             encoded_send: ser.into(),
             encoded_recv: de.into(),
         })
     }
-    pub async fn send(&mut self, packet: T) -> Result<()> {
+    pub async fn send(&mut self, packet: Packet) -> Result<()> {
         self.encoded_send.send(packet).await.into()
     }
-    pub async fn recv(&mut self) -> Result<T> {
+    pub async fn recv(&mut self) -> Result<Packet> {
         self.encoded_recv.next().await.into()
     }
 }

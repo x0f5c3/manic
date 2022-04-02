@@ -3,9 +3,7 @@ members = [
 	"manic",
 	"manic_http",
 	"manic_proto",
-	"manic_rsa",
     "conn",
-	"croc_rewrite",
 	"mnemonicode",
 	"manic_py",
 ]
