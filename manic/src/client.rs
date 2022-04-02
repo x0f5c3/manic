@@ -1,43 +1,22 @@
 use anyhow::{anyhow, Context, Result};
 use argon2::password_hash::SaltString;
 use argon2::{Argon2, PasswordHasher};
-use futures::sink::SinkExt;
-use futures::StreamExt;
-use manic_proto::PacketType::Key;
-use manic_proto::{
-    ChaCha20Rng, EncryptedBincode, Header, RsaPublicKey, SymmetricalEncryptedBincode,
-};
-use manic_proto::{ChaChaKey, Packet, PacketType, PADDINGFUNC};
-use manic_proto::{Key, RsaKey};
-use rand_core::{OsRng, RngCore, SeedableRng};
+use futures::SinkExt;
+use manic_proto::Packet;
+use manic_proto::SymmetricalCodec;
+use manic_proto::{Reader, Writer};
+use rand_core::OsRng;
 use spake2::{Ed25519Group, Identity, Password};
-use std::io::{ErrorKind, Read, Write};
-use std::net::IpAddr;
-use tokio::io::{AsyncRead, AsyncReadExt, AsyncWrite, AsyncWriteExt};
-use tokio::net::tcp::OwnedReadHalf;
-use tokio::net::tcp::OwnedWriteHalf;
+use tokio::io::{AsyncReadExt, AsyncWrite, AsyncWriteExt};
 use tokio::net::TcpStream;
-use tokio_serde::formats::{Bincode, SymmetricalBincode};
-use tokio_serde::{Framed, SymmetricallyFramed};
+use tokio_serde::formats::SymmetricalBincode;
+use tokio_serde::SymmetricallyFramed;
+use tokio_stream::StreamExt;
 use tokio_util::codec::{FramedRead, FramedWrite, LengthDelimitedCodec};
 
 const RSAMSGLEN: usize = 512;
 
 const WEAK_KEY: [u8; 3] = [1, 2, 3];
-
-type Writer = Framed<
-    FramedWrite<OwnedWriteHalf, LengthDelimitedCodec>,
-    Packet,
-    Packet,
-    EncryptedBincode<Packet, Packet>,
->;
-
-type Reader = Framed<
-    FramedRead<OwnedReadHalf, LengthDelimitedCodec>,
-    Packet,
-    Packet,
-    EncryptedBincode<Packet, Packet>,
->;
 
 const MAGIC_BYTES: &[u8; 4] = b"croc";
 
@@ -50,7 +29,7 @@ impl StdConn {
         let mut header = [0; 4];
         self.0.read(&mut header).await?;
         if &header != MAGIC_BYTES {
-            anyhow::anyhow!("Magic is wrong")
+            anyhow!("Magic is wrong");
         }
         header = [0; 4];
         self.0.read(&mut header).await?;
@@ -87,9 +66,9 @@ impl StdConn {
             &Identity::new(b"server"),
             &Identity::new(b"client"),
         );
-        let bbytes = self.read().unwrap();
+        let bbytes = self.read().await.unwrap();
         let strong_key = s.finish(&bbytes).unwrap();
-        self.write(&key).unwrap();
+        self.write(&key).await.unwrap();
         let pw_hash = new_argon(&strong_key)?;
         self.write(pw_hash.salt.context("No salt")?.as_bytes())
             .await?;
@@ -117,19 +96,18 @@ pub struct Conn {
 
 impl Conn {
     pub fn new(conn: TcpStream, key: Vec<u8>) -> Result<Self> {
-        let (read, write) = conn.into_split();
+        let std = conn.into_std()?;
+        let write = TcpStream::from_std(std.try_clone()?)?;
+        let read = TcpStream::from_std(std)?;
         let len_delim = FramedWrite::new(write, LengthDelimitedCodec::new());
 
-        let mut ser = SymmetricallyFramed::new(
-            len_delim,
-            SymmetricalEncryptedBincode::<Packet>::new(key.clone()),
-        );
+        let mut ser =
+            SymmetricallyFramed::new(len_delim, SymmetricalCodec::<Packet>::new(key.clone()));
         let len_read = FramedRead::new(read, LengthDelimitedCodec::new());
-        let mut de =
-            SymmetricallyFramed::new(len_read, SymmetricalEncryptedBincode::<Packet>::new(key));
+        let mut de = SymmetricallyFramed::new(len_read, SymmetricalCodec::<Packet>::new(key));
         Ok(Self {
-            encoded_send: ser.into(),
-            encoded_recv: de.into(),
+            encoded_send: ser,
+            encoded_recv: de,
         })
     }
     pub async fn send(&mut self, packet: Packet) -> Result<()> {

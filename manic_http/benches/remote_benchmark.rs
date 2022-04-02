@@ -6,7 +6,7 @@ use std::time::Duration;
 use tokio::io::AsyncWriteExt;
 use tokio::runtime::Builder;
 
-async fn bench_remote(workers: u8) -> manic::Result<()> {
+async fn bench_remote(workers: u8) -> manic_http::Result<()> {
     let mut dl = Downloader::new(
         "https://github.com/schollz/croc/releases/download/v9.2.0/croc_9.2.0_Windows-64bit.zip",
         workers,
@@ -19,7 +19,7 @@ async fn bench_remote(workers: u8) -> manic::Result<()> {
     Ok(())
 }
 
-async fn bench_async(verify: bool) -> manic::Result<()> {
+async fn bench_async(verify: bool) -> manic_http::Result<()> {
     let mut output = tokio::fs::File::from_std(tempfile::tempfile()?);
     let url =
         "https://github.com/schollz/croc/releases/download/v9.2.0/croc_9.2.0_Windows-64bit.zip";
@@ -35,7 +35,7 @@ async fn bench_async(verify: bool) -> manic::Result<()> {
     Ok(())
 }
 
-fn blocking_bench(verify: bool) -> manic::Result<()> {
+fn blocking_bench(verify: bool) -> manic_http::Result<()> {
     let mut output = tempfile::tempfile()?;
     let resp = reqwest::blocking::get(
         "https://github.com/schollz/croc/releases/download/v9.2.0/croc_9.2.0_Windows-64bit.zip",

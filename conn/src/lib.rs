@@ -10,8 +10,10 @@ use chacha20poly1305::{aead::Aead, aead::NewAead, XChaCha20Poly1305, XNonce};
 use error::Result;
 use futures::{SinkExt, StreamExt};
 use log::debug;
-use rand_chacha::ChaCha20Rng;
+use manic_proto::SymmetricallyFramed;
+use manic_proto::{Framed, FramedRead, FramedWrite, LengthDelimitedCodec, Reader, Writer};
 use manic_proto::{Packet, SymmetricalCodec};
+use rand_chacha::ChaCha20Rng;
 use rand_core::{OsRng, RngCore, SeedableRng};
 use serde::{Deserialize, Serialize};
 use spake2::{Ed25519Group, Identity, Password};
@@ -23,8 +25,7 @@ use std::pin::Pin;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::tcp::{OwnedReadHalf, OwnedWriteHalf};
 use tokio::net::TcpStream;
-use tokio_serde::{Deserializer, Framed, Serializer, SymmetricallyFramed};
-use tokio_util::codec::{FramedRead, FramedWrite, LengthDelimitedCodec};
+use tokio_serde::{Deserializer, Serializer};
 use zeroize::Zeroize;
 
 #[derive(Deserialize, Serialize, Debug)]
@@ -64,10 +65,6 @@ impl Zeroize for Key {
 // }
 pub struct StdConn(TcpStream);
 
-type Writer = manic_proto::Writer<Packet>;
-
-type Reader = manic_proto::Reader<Packet>;
-
 const MAGIC_BYTES: &[u8; 4] = b"croc";
 
 impl StdConn {
@@ -75,7 +72,7 @@ impl StdConn {
         let mut header = [0; 4];
         self.0.read(&mut header).await?;
         if &header != MAGIC_BYTES {
-            return Err(CodecError::MagicBytes(header))
+            return Err(CodecError::MagicBytes(header));
         }
         header = [0; 4];
         self.0.read(&mut header).await?;
@@ -141,15 +138,13 @@ impl Conn {
         let read = TcpStream::from_std(std)?;
         let len_delim = FramedWrite::new(write, LengthDelimitedCodec::new());
 
-        let mut ser = SymmetricallyFramed::new(
-            len_delim,
-            SymmetricalCodec::<Packet>::new(key.clone()),
-        );
+        let mut ser =
+            SymmetricallyFramed::new(len_delim, SymmetricalCodec::<Packet>::new(key.clone()));
         let len_read = FramedRead::new(read, LengthDelimitedCodec::new());
         let mut de = SymmetricallyFramed::new(len_read, SymmetricalCodec::<Packet>::new(key));
         Ok(Self {
-            encoded_send: ser.into(),
-            encoded_recv: de.into(),
+            encoded_send: ser,
+            encoded_recv: de,
         })
     }
     pub async fn send(&mut self, packet: Packet) -> Result<()> {

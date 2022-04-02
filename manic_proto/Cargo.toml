@@ -7,7 +7,7 @@ edition = "2021"
 
 [dependencies]
 tokio-serde = "0.8.0"
-tokio-util = { version = "0.6.9", features = ["full"] }
+tokio-util = { version = "0.7.1", features = ["codec", "net", "compat", "full"] }
 serde = { version = "*", features = ["derive"] }
 bincode = "*"
 thiserror = "1.0.30"

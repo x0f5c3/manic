@@ -3,7 +3,7 @@ use manic_http::threaded::Downloader;
 use manic_http::Hash;
 
 #[test]
-fn remote() -> manic::Result<()> {
+fn remote() -> manic_http::Result<()> {
     let _ = pretty_env_logger::formatted_builder()
         .filter(Some("manic"), LevelFilter::Debug)
         .try_init();

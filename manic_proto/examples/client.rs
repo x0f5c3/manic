@@ -1,6 +1,7 @@
 use futures::prelude::*;
-use manic_proto::EncryptedBincode;
-use manic_proto::SymmetricalEncryptedBincode;
+use futures::{Sink, SinkExt};
+use manic_proto::Codec;
+use manic_proto::SymmetricalCodec;
 use tokio::net::TcpStream;
 use tokio_serde::{Framed, SymmetricallyFramed};
 use tokio_util::codec::{FramedWrite, LengthDelimitedCodec};
@@ -20,15 +21,7 @@ async fn client() {
 
     let len_delim = FramedWrite::new(conn, LengthDelimitedCodec::new());
 
-    let mut ser: Framed<
-        FramedWrite<TcpStream, LengthDelimitedCodec>,
-        String,
-        String,
-        EncryptedBincode<String, String>,
-    > = SymmetricallyFramed::new(
-        len_delim,
-        SymmetricalEncryptedBincode::<String>::new(KEY.to_vec()),
-    );
+    let mut ser = SymmetricallyFramed::new(len_delim, Codec::<String, String>::new(KEY.to_vec()));
     println!("Sending");
     println!("Result: {:?}", ser.send("Test".to_string()).await);
     println!("Result2: {:?}", ser.send("Test 2".to_string()).await);
