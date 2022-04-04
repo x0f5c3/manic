@@ -8,6 +8,7 @@ edition = "2021"
 [dependencies]
 lazy_static = "1.4.0"
 rand = "0.8.5"
+names = { git = "https://github.com/x0f5c3/names.git", branch = "main" }
 
 
 [[bin]]

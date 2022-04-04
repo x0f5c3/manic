@@ -92,15 +92,7 @@ use chacha20poly1305::aead::Aead;
 use chacha20poly1305::aead::NewAead;
 use tokio::net::TcpStream;
 
-pub type Writer = Framed<
-    FramedWrite<TcpStream, LengthDelimitedCodec>,
-    Packet,
-    Codec<Packet, Packet>,
-    Codec<Packet, Packet>,
->;
-pub type Reader = Framed<
-    FramedRead<TcpStream, LengthDelimitedCodec>,
-    Packet,
-    Codec<Packet, Packet>,
-    Codec<Packet, Packet>,
->;
+pub type Writer =
+    Framed<FramedWrite<TcpStream, LengthDelimitedCodec>, Packet, Packet, Codec<Packet, Packet>>;
+pub type Reader =
+    Framed<FramedRead<TcpStream, LengthDelimitedCodec>, Packet, Packet, Codec<Packet, Packet>>;
