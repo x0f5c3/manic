@@ -25,6 +25,11 @@ futures = "0.3.21"
 spake2 = { version = "0.3.1", features = ["std"] }
 
 
+[dependencies.names]
+version = "0.13.0"
+default-features = false
+
+
 [dependencies.argon2]
 version = "0.3.4"
 features = ["parallel"]
