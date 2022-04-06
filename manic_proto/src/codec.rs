@@ -12,8 +12,8 @@ use std::pin::Pin;
 use chacha20poly1305::aead::Aead;
 use tokio::net::tcp::{OwnedReadHalf, OwnedWriteHalf};
 use tokio::net::TcpStream;
-use tokio_serde::{Deserializer, Framed, Serializer, SymmetricallyFramed};
-use tokio_util::codec::{FramedRead, FramedWrite, LengthDelimitedCodec};
+use tokio_serde::{Deserializer, Serializer, SymmetricallyFramed};
+use tokio_util::codec::{FramedRead, Framed,  FramedWrite, LengthDelimitedCodec};
 use zeroize::Zeroize;
 
 pub type SymmetricalCodec<T> = Codec<T, T>;
@@ -89,7 +89,6 @@ where
     }
 }
 
-pub type Writer<T> = SymmetricallyFramed<FramedWrite<TcpStream, LengthDelimitedCodec>, T, Codec<T, T>>;
+pub type Writer<T> = Framed<FramedWrite<TcpStream, LengthDelimitedCodec>, Codec<T, T>>;
 
-pub type Reader<T> =
-SymmetricallyFramed<FramedRead<TcpStream, LengthDelimitedCodec>, T, Codec<T, T>>;
+pub type Reader<T> = Framed<FramedRead<TcpStream, LengthDelimitedCodec>, Codec<T, T>>;
