@@ -2,7 +2,7 @@ use log::LevelFilter;
 use manic_http::{threaded::Downloader, Hash};
 
 #[test]
-fn local() -> manic::Result<()> {
+fn local() -> manic_http::Result<()> {
     let _ = pretty_env_logger::formatted_builder()
         .filter(Some("manic"), LevelFilter::Debug)
         .filter(Some("warp"), LevelFilter::Info)

@@ -2,7 +2,7 @@ use log::LevelFilter;
 use manic_http::{Downloader, Hash};
 
 #[tokio::test]
-async fn remote() -> manic::Result<()> {
+async fn remote() -> manic_http::Result<()> {
     let _ = pretty_env_logger::formatted_builder()
         .filter(Some("manic"), LevelFilter::Debug)
         .try_init();

@@ -3,7 +3,7 @@ use manic_http::threaded::Downloader;
 use manic_http::Hash;
 use std::time::Duration;
 
-fn bench_remote(workers: u8, verify: bool) -> manic::Result<()> {
+fn bench_remote(workers: u8, verify: bool) -> manic_http::Result<()> {
     let mut dl = Downloader::new(
         "https://github.com/schollz/croc/releases/download/v9.2.0/croc_9.2.0_Windows-64bit.zip",
         workers,

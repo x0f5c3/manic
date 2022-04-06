@@ -1,22 +1,23 @@
 #![allow(dead_code)]
 extern crate core;
 
-mod files;
-mod lists;
 mod codec;
 mod error;
+mod files;
+mod lists;
 
-pub use codec::{SymmetricalCodec, Codec, Reader, Writer};
+pub use tokio_serde::{Framed, SymmetricallyFramed};
+pub use tokio_util::codec::{length_delimited::LengthDelimitedCodec, FramedRead, FramedWrite};
+
+pub use codec::{Codec, Reader, SymmetricalCodec, Writer};
+pub use error::CodecError;
 
 use crate::files::File;
-use chacha20poly1305::XChaCha20Poly1305;
+
 use crc::{Crc, CRC_16_IBM_SDLC};
-use rand_core::{OsRng, RngCore};
-use rsa::pkcs1::ToRsaPublicKey;
-use rsa::{PaddingScheme, PublicKey};
+
 use serde::{Deserialize, Serialize};
-use std::net::IpAddr;
-use uuid::Uuid;
+
 use zeroize::Zeroize;
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -74,7 +75,6 @@ impl PacketType {
     }
 }
 
-
 #[derive(Serialize, Debug, Deserialize, Clone)]
 pub struct Header {
     pub hostname: String,
@@ -97,4 +97,3 @@ impl Zeroize for Header {
         self.destination.zeroize();
     }
 }
-
