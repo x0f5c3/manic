@@ -10,9 +10,9 @@ use chacha20poly1305::{aead::Aead, aead::NewAead, XChaCha20Poly1305, XNonce};
 use error::Result;
 use futures::{SinkExt, StreamExt};
 use log::debug;
-use manic_proto::SymmetricallyFramed;
 use manic_proto::{Framed, FramedRead, FramedWrite, LengthDelimitedCodec, Reader, Writer};
 use manic_proto::{Packet, SymmetricalCodec};
+use manic_proto::{SymmetricalEncryptedBincode, SymmetricallyFramed};
 use rand_chacha::ChaCha20Rng;
 use rand_core::{OsRng, RngCore, SeedableRng};
 use serde::{Deserialize, Serialize};
@@ -138,19 +138,26 @@ impl Conn {
         let read = TcpStream::from_std(std)?;
         let len_delim = FramedWrite::new(write, LengthDelimitedCodec::new());
 
-        let mut ser =
-            SymmetricallyFramed::new(len_delim, SymmetricalCodec::<Packet>::new(key.clone()));
+        let mut ser = SymmetricallyFramed::new(
+            len_delim,
+            SymmetricalEncryptedBincode::<Packet>::new(key.clone(), None),
+        );
         let len_read = FramedRead::new(read, LengthDelimitedCodec::new());
-        let mut de = SymmetricallyFramed::new(len_read, SymmetricalCodec::<Packet>::new(key));
+        let mut de = SymmetricallyFramed::new(
+            len_read,
+            SymmetricalEncryptedBincode::<Packet>::new(key, None),
+        );
         Ok(Self {
             encoded_send: ser,
             encoded_recv: de,
         })
     }
     pub async fn send(&mut self, packet: Packet) -> Result<()> {
-        self.encoded_send.send(packet).await.into()
+        self.encoded_send.send(packet).await?;
+        Ok(())
     }
     pub async fn recv(&mut self) -> Result<Packet> {
-        self.encoded_recv.next().await.into()
+        let res = self.encoded_recv.next().await??;
+        Ok(res)
     }
 }

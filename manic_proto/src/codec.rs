@@ -9,6 +9,7 @@ use rand_core::{RngCore, SeedableRng};
 use serde::{Deserialize, Serialize};
 use std::fmt::Debug;
 use std::marker::PhantomData;
+use std::net::TcpStream;
 use std::pin::Pin;
 use tokio_serde::{Deserializer, Serializer};
 use zeroize::Zeroize;
@@ -91,8 +92,22 @@ use crate::Packet;
 use chacha20poly1305::aead::Aead;
 use chacha20poly1305::aead::NewAead;
 use tokio::net::TcpStream;
+pub use tokio_serde::formats::SymmetricalEncryptedBincode;
 
-pub type Writer =
-    Framed<FramedWrite<TcpStream, LengthDelimitedCodec>, Packet, Packet, Codec<Packet, Packet>>;
-pub type Reader =
-    Framed<FramedRead<TcpStream, LengthDelimitedCodec>, Packet, Packet, Codec<Packet, Packet>>;
+pub struct Writer(Framed<
+    FramedWrite<TcpStream, LengthDelimitedCodec>,
+    Packet,
+    Packet,
+    SymmetricalEncryptedBincode<Packet>>
+);
+pub struct Reader(Framed<
+    FramedRead<TcpStream, LengthDelimitedCodec>,
+    Packet,
+    Packet,
+    SymmetricalEncryptedBincode<Packet>>
+);
+
+
+impl Writer {
+    pub fn new(conn: TcpStream, key: Option<Vec<u8>>)
+}

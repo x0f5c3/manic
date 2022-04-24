@@ -6,6 +6,7 @@ mod error;
 mod files;
 mod lists;
 
+pub use tokio_serde::formats::*;
 pub use tokio_serde::{Framed, SymmetricallyFramed};
 pub use tokio_util::codec::{length_delimited::LengthDelimitedCodec, FramedRead, FramedWrite};
 
@@ -18,7 +19,10 @@ use crc::{Crc, CRC_16_IBM_SDLC};
 
 use serde::{Deserialize, Serialize};
 
-use zeroize::Zeroize;
+pub use argon2;
+pub use chacha20poly1305;
+
+pub use zeroize::Zeroize;
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct RsaKeyMessage {
