@@ -9,9 +9,8 @@ use rand_core::{RngCore, SeedableRng};
 use serde::{Deserialize, Serialize};
 use std::fmt::Debug;
 use std::marker::PhantomData;
-use std::net::TcpStream;
 use std::pin::Pin;
-use tokio_serde::{Deserializer, Serializer};
+use tokio_serde::{Deserializer, Serializer, SymmetricallyFramed};
 use zeroize::Zeroize;
 
 pub type SymmetricalCodec<T> = Codec<T, T>;
@@ -49,7 +48,7 @@ where
 {
     type Error = CodecError;
 
-    fn serialize(self: Pin<&mut Self>, item: &SinkItem) -> std::result::Result<Bytes, Self::Error> {
+    fn serialize(self: Pin<&mut Self>, item: &SinkItem) -> Result<Bytes, Self::Error> {
         let mut nonce = XNonce::default();
         let mut rng = ChaCha20Rng::from_entropy();
         rng.fill_bytes(&mut nonce);
@@ -72,7 +71,7 @@ where
 {
     type Error = CodecError;
 
-    fn deserialize(self: Pin<&mut Self>, src: &BytesMut) -> std::result::Result<Item, Self::Error> {
+    fn deserialize(self: Pin<&mut Self>, src: &BytesMut) -> Result<Item, Self::Error> {
         if src.len() < 25 {
             return Err(CodecError::TooShort(src.len()));
         }
@@ -91,23 +90,64 @@ use crate::LengthDelimitedCodec;
 use crate::Packet;
 use chacha20poly1305::aead::Aead;
 use chacha20poly1305::aead::NewAead;
+use tokio::net::tcp::{OwnedReadHalf, OwnedWriteHalf};
 use tokio::net::TcpStream;
 pub use tokio_serde::formats::SymmetricalEncryptedBincode;
 
-pub struct Writer(Framed<
-    FramedWrite<TcpStream, LengthDelimitedCodec>,
-    Packet,
-    Packet,
-    SymmetricalEncryptedBincode<Packet>>
+pub struct Writer(
+    Framed<
+        FramedWrite<OwnedWriteHalf, LengthDelimitedCodec>,
+        Packet,
+        Packet,
+        SymmetricalEncryptedBincode<Packet>,
+    >,
 );
-pub struct Reader(Framed<
-    FramedRead<TcpStream, LengthDelimitedCodec>,
-    Packet,
-    Packet,
-    SymmetricalEncryptedBincode<Packet>>
+pub struct Reader(
+    Framed<
+        FramedRead<OwnedReadHalf, LengthDelimitedCodec>,
+        Packet,
+        Packet,
+        SymmetricalEncryptedBincode<Packet>,
+    >,
 );
 
+fn gen_key() -> Vec<u8> {
+    let mut key = chacha20poly1305::Key::default();
+    let mut rng = rand::rngs::OsRng::default();
+    rng.fill_bytes(&mut key);
+    key.to_vec()
+}
 
 impl Writer {
-    pub fn new(conn: TcpStream, key: Option<Vec<u8>>)
+    pub fn new(conn: OwnedWriteHalf, key: Option<Vec<u8>>) -> Self {
+        let len_delim = FramedWrite::new(conn, LengthDelimitedCodec::new());
+
+        let ser: Framed<
+            FramedWrite<OwnedWriteHalf, LengthDelimitedCodec>,
+            Packet,
+            Packet,
+            SymmetricalEncryptedBincode<Packet>,
+        > = SymmetricallyFramed::new(
+            len_delim,
+            SymmetricalEncryptedBincode::<Packet>::new(key.unwrap_or_else(|| gen_key()), None),
+        );
+        ser.into()
+    }
+}
+
+impl Reader {
+    pub fn new(conn: OwnedReadHalf, key: Option<Vec<u8>>) -> Self {
+        let len_delim = FramedRead::new(conn, LengthDelimitedCodec::new());
+
+        let ser: Framed<
+            FramedRead<OwnedReadHalf, LengthDelimitedCodec>,
+            Packet,
+            Packet,
+            SymmetricalEncryptedBincode<Packet>,
+        > = SymmetricallyFramed::new(
+            len_delim,
+            SymmetricalEncryptedBincode::<Packet>::new(key.unwrap_or_else(|| gen_key()), None),
+        );
+        ser.into()
+    }
 }

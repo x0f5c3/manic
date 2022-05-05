@@ -41,7 +41,7 @@ impl Key {
     }
     pub fn generate(hostname: String, ip: String) -> Self {
         let mut key = chacha20poly1305::Key::default();
-        let mut rng = rand::rngs::OsRng::default();
+        let mut rng = OsRng::default();
         rng.fill_bytes(&mut key);
         Self {
             hostname,
@@ -59,10 +59,6 @@ impl Zeroize for Key {
     }
 }
 
-// pub fn start_codec<T>(
-//     st: &mut TcpStream,
-// ) -> Result<EncryptedBincode<T>> {
-// }
 pub struct StdConn(TcpStream);
 
 const MAGIC_BYTES: &[u8; 4] = b"croc";
@@ -133,20 +129,9 @@ pub struct Conn {
 
 impl Conn {
     pub fn new(conn: TcpStream, key: Vec<u8>) -> Result<Self> {
-        let std = conn.into_std()?;
-        let write = TcpStream::from_std(std.try_clone()?)?;
-        let read = TcpStream::from_std(std)?;
-        let len_delim = FramedWrite::new(write, LengthDelimitedCodec::new());
-
-        let mut ser = SymmetricallyFramed::new(
-            len_delim,
-            SymmetricalEncryptedBincode::<Packet>::new(key.clone(), None),
-        );
-        let len_read = FramedRead::new(read, LengthDelimitedCodec::new());
-        let mut de = SymmetricallyFramed::new(
-            len_read,
-            SymmetricalEncryptedBincode::<Packet>::new(key, None),
-        );
+        let (read, write) = conn.into_split();
+        let ser = Writer::new(write, Some(key.clone()));
+        let de = Reader::new(read, Some(key));
         Ok(Self {
             encoded_send: ser,
             encoded_recv: de,
