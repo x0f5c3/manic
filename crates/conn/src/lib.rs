@@ -24,7 +24,7 @@ use std::marker::PhantomData;
 use std::pin::Pin;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::tcp::{OwnedReadHalf, OwnedWriteHalf};
-use tokio::net::TcpStream;
+use tokio::net::{TcpStream, ToSocketAddrs};
 use tokio_serde::{Deserializer, Serializer};
 use zeroize::Zeroize;
 
@@ -64,6 +64,9 @@ pub struct StdConn(TcpStream);
 const MAGIC_BYTES: &[u8; 4] = b"croc";
 
 impl StdConn {
+    async fn connect<A: ToSocketAddrs>(addr: A) -> Result<Self> {
+        Ok(Self(TcpStream::connect(addr).await?))
+    }
     async fn read(&mut self) -> Result<Vec<u8>> {
         let mut header = [0; 4];
         self.0.read(&mut header).await?;

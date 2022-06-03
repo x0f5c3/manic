@@ -23,7 +23,7 @@ fn main() -> Result<()> {
                 if let Some(p) = &app.output {
                     i.save(&p, dl.get_pool())?;
                 } else {
-                    i.save(".", dl.get_pool())?;
+                    i.save("..", dl.get_pool())?;
                 }
             }
         }

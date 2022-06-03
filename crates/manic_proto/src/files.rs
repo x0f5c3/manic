@@ -5,6 +5,15 @@ use std::fs;
 use std::io::{ErrorKind, Read};
 use std::os::unix::prelude::AsRawFd;
 use std::path::Path;
+use time::{Date, OffsetDateTime};
+
+#[cfg(target_os = "windows")]
+use windows::Storage::{FileProperties::BasicProperties, StorageFile};
+
+#[cfg(target_os = "windows")]
+pub fn get_attrs(path: String) -> Result<BasicProperties, Box<dyn std::error::Error>> {
+    let f = StorageFile::GetFileFromPathAsync(path).await?;
+}
 
 pub const CHUNK_SIZE: usize = 1024;
 
@@ -76,6 +85,15 @@ pub enum Metadata {
         access_time: TimeSpecs,
         crc: u16,
     },
+}
+
+impl Metadata {
+    pub fn size(&self) -> i64 {
+        *match &self {
+            Self::Full { size, .. } => size,
+            Self::Part { size, .. } => size,
+        }
+    }
 }
 
 #[derive(Deserialize, Debug, Serialize, Clone)]
@@ -168,7 +186,8 @@ impl FullPack {
         chunk_size: Option<usize>,
     ) -> Result<Self, Box<dyn std::error::Error>> {
         let f = File::new(file_path)?;
-        if let Some(size) = chunk_size {
+        let chunk_size = chunk_size.unwrap_or(1024);
+        if f.meta.size() > chunk_size as i64 {
             let res = f.split(size).unwrap();
             Ok(Self::Parts(res))
         } else {
@@ -184,6 +203,12 @@ impl Mode {
     fn as_nix(&self) -> Option<stat::Mode> {
         stat::Mode::from_bits(self.0)
     }
+}
+
+pub struct FileAttrs {
+    created: OffsetDateTime,
+    accessed: OffsetDateTime,
+    modified: OffsetDateTime,
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone, Copy)]

@@ -8,6 +8,7 @@ use rand_chacha::ChaCha20Rng;
 use rand_core::{RngCore, SeedableRng};
 use serde::{Deserialize, Serialize};
 use std::fmt::Debug;
+use std::io::{Read, Write};
 use std::marker::PhantomData;
 use std::pin::Pin;
 use tokio_serde::{Deserializer, Serializer, SymmetricallyFramed};
@@ -57,8 +58,12 @@ where
         let mut res = nonce.to_vec();
         debug!("To serialize: {:?}", item);
         let ser = bincode::serialize(&item)?;
+        let mut writer = Vec::new();
+        let mut parz: ParCompress<Snap> = ParCompressBuilder::new().from_writer(writer);
+        parz.write_all(&ser)?;
+        parz.finish()?;
         debug!("Serialized: {:?}", ser);
-        res.append(&mut cipher.encrypt(&nonce, ser.as_slice())?.to_vec());
+        res.append(&mut cipher.encrypt(&nonce, writer.as_slice())?.to_vec());
         debug!("Encrypted: {:?}", res);
         Ok(Bytes::from(res))
     }
@@ -80,7 +85,11 @@ where
         let cipher = XChaCha20Poly1305::new(key);
         let dec = cipher.decrypt(XNonce::from_slice(&src[..24]), &src[24..])?;
         debug!("Decrypted: {:?}", dec);
-        let res: Item = bincode::deserialize(dec.as_slice())?;
+        let mut writer = Vec::new();
+        let mut decompress: ParDecompress<Snap> = ParDecompressBuilder::new().from_reader(dec);
+        let mut decompressed = Vec::new();
+        decompress.read_to_end(&mut decompressed)?;
+        let res: Item = bincode::deserialize(decompressed.as_slice())?;
         debug!("Deserialized: {:?}", res);
         Ok(res)
     }
@@ -90,6 +99,10 @@ use crate::LengthDelimitedCodec;
 use crate::Packet;
 use chacha20poly1305::aead::Aead;
 use chacha20poly1305::aead::NewAead;
+use gzp::par::compress::{ParCompress, ParCompressBuilder};
+use gzp::par::decompress::{ParDecompress, ParDecompressBuilder};
+use gzp::snap::Snap;
+use gzp::ZWriter;
 use tokio::net::tcp::{OwnedReadHalf, OwnedWriteHalf};
 use tokio::net::TcpStream;
 pub use tokio_serde::formats::SymmetricalEncryptedBincode;

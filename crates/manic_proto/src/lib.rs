@@ -25,23 +25,6 @@ pub use chacha20poly1305;
 pub use zeroize::Zeroize;
 
 #[derive(Serialize, Deserialize, Debug)]
-pub struct RsaKeyMessage {
-    crc: u16,
-    pub data: Vec<u8>,
-}
-
-impl RsaKeyMessage {
-    pub fn new(data: Vec<u8>) -> Self {
-        let crc = Crc::<u16>::new(&CRC_16_IBM_SDLC).checksum(&data);
-        Self { crc, data }
-    }
-    pub fn check_crc(&self) -> bool {
-        let sum = Crc::<u16>::new(&CRC_16_IBM_SDLC).checksum(&self.data);
-        sum == self.crc
-    }
-}
-
-#[derive(Serialize, Deserialize, Debug)]
 pub struct Packet {
     header: Header,
     packet: PacketType,
@@ -62,15 +45,11 @@ impl Packet {
 
 #[derive(Serialize, Deserialize, Debug)]
 pub enum PacketType {
-    RSA(RsaKeyMessage),
     File(File),
     KeyReq,
 }
 
 impl PacketType {
-    pub fn new_rsa(key: Vec<u8>) -> Self {
-        Self::RSA(RsaKeyMessage::new(key))
-    }
     pub fn new_file(file: File) -> Self {
         Self::File(file)
     }

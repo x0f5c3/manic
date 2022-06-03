@@ -29,4 +29,4 @@ rsa = { version = "0.5.0", features = ["serde", "pkcs5"] }
 sha2 = "0.10.1"
 sha1 = "0.10.0"
 rand = "0.8.4"
-manic_proto = { path = "../manic_proto"}
+manic_proto = { path = "../manic_proto" }
