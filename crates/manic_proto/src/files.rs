@@ -15,6 +15,10 @@ pub fn get_attrs(path: String) -> Result<BasicProperties, Box<dyn std::error::Er
     let f = StorageFile::GetFileFromPathAsync(path).await?;
 }
 
+pub struct FileOnDisk {
+    meta:
+}
+
 pub const CHUNK_SIZE: usize = 1024;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

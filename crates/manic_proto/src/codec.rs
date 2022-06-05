@@ -16,9 +16,10 @@ use zeroize::Zeroize;
 
 pub type SymmetricalCodec<T> = Codec<T, T>;
 
-#[derive(Clone, Debug)]
+#[derive(Clone)]
 pub struct Codec<Item, SinkItem> {
     key: Vec<u8>,
+    cha: XChaCha20Poly1305,
     ghost: PhantomData<(Item, SinkItem)>,
 }
 
@@ -36,7 +37,9 @@ impl<I, S> Drop for Codec<I, S> {
 
 impl<Item, SinkItem> Codec<Item, SinkItem> {
     pub fn new(key: Vec<u8>) -> Self {
+        let cha = XChaCha20Poly1305::new_from_slice(key.as_slice()).unwrap();
         Self {
+            cha,
             key,
             ghost: PhantomData::default(),
         }
@@ -59,11 +62,11 @@ where
         debug!("To serialize: {:?}", item);
         let ser = bincode::serialize(&item)?;
         let mut writer = Vec::new();
-        let mut parz: ParCompress<Snap> = ParCompressBuilder::new().from_writer(writer);
+        let mut parz = flate2::write::DeflateEncoder::new(&mut writer, Compression::best());
         parz.write_all(&ser)?;
         parz.finish()?;
         debug!("Serialized: {:?}", ser);
-        res.append(&mut cipher.encrypt(&nonce, writer.as_slice())?.to_vec());
+        res.append(&mut self.cha.encrypt(&nonce, writer.as_slice())?.to_vec());
         debug!("Encrypted: {:?}", res);
         Ok(Bytes::from(res))
     }
@@ -81,12 +84,11 @@ where
             return Err(CodecError::TooShort(src.len()));
         }
         debug!("To decrypt: {:?}", src);
-        let key = ChaChaKey::from_slice(self.key.as_slice());
-        let cipher = XChaCha20Poly1305::new(key);
-        let dec = cipher.decrypt(XNonce::from_slice(&src[..24]), &src[24..])?;
+        let dec = self
+            .cha
+            .decrypt(XNonce::from_slice(&src[..24]), &src[24..])?;
         debug!("Decrypted: {:?}", dec);
-        let mut writer = Vec::new();
-        let mut decompress: ParDecompress<Snap> = ParDecompressBuilder::new().from_reader(dec);
+        let mut decompress = flate2::read::DeflateDecoder::new(dec.as_slice());
         let mut decompressed = Vec::new();
         decompress.read_to_end(&mut decompressed)?;
         let res: Item = bincode::deserialize(decompressed.as_slice())?;
@@ -99,20 +101,16 @@ use crate::LengthDelimitedCodec;
 use crate::Packet;
 use chacha20poly1305::aead::Aead;
 use chacha20poly1305::aead::NewAead;
-use gzp::par::compress::{ParCompress, ParCompressBuilder};
-use gzp::par::decompress::{ParDecompress, ParDecompressBuilder};
-use gzp::snap::Snap;
-use gzp::ZWriter;
+use flate2::Compression;
+
 use tokio::net::tcp::{OwnedReadHalf, OwnedWriteHalf};
-use tokio::net::TcpStream;
-pub use tokio_serde::formats::SymmetricalEncryptedBincode;
 
 pub struct Writer(
     Framed<
         FramedWrite<OwnedWriteHalf, LengthDelimitedCodec>,
         Packet,
         Packet,
-        SymmetricalEncryptedBincode<Packet>,
+        SymmetricalCodec<Packet>,
     >,
 );
 pub struct Reader(
@@ -120,7 +118,7 @@ pub struct Reader(
         FramedRead<OwnedReadHalf, LengthDelimitedCodec>,
         Packet,
         Packet,
-        SymmetricalEncryptedBincode<Packet>,
+        SymmetricalCodec<Packet>,
     >,
 );
 
@@ -139,12 +137,12 @@ impl Writer {
             FramedWrite<OwnedWriteHalf, LengthDelimitedCodec>,
             Packet,
             Packet,
-            SymmetricalEncryptedBincode<Packet>,
+            SymmetricalCodec<Packet>,
         > = SymmetricallyFramed::new(
             len_delim,
-            SymmetricalEncryptedBincode::<Packet>::new(key.unwrap_or_else(|| gen_key()), None),
+            SymmetricalCodec::<Packet>::new(key.unwrap_or_else(|| gen_key())),
         );
-        ser.into()
+        Self(ser)
     }
 }
 
@@ -156,11 +154,11 @@ impl Reader {
             FramedRead<OwnedReadHalf, LengthDelimitedCodec>,
             Packet,
             Packet,
-            SymmetricalEncryptedBincode<Packet>,
+            SymmetricalCodec<Packet>,
         > = SymmetricallyFramed::new(
             len_delim,
-            SymmetricalEncryptedBincode::<Packet>::new(key.unwrap_or_else(|| gen_key()), None),
+            SymmetricalCodec::<Packet>::new(key.unwrap_or_else(|| gen_key())),
         );
-        ser.into()
+        Self(ser)
     }
 }

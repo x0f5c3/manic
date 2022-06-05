@@ -61,7 +61,7 @@ impl Zeroize for Key {
 
 pub struct StdConn(TcpStream);
 
-const MAGIC_BYTES: &[u8; 4] = b"croc";
+const MAGIC_BYTES: &[u8; 5] = b"manic";
 
 impl StdConn {
     async fn connect<A: ToSocketAddrs>(addr: A) -> Result<Self> {
@@ -109,7 +109,7 @@ impl StdConn {
             &Identity::new(b"client"),
         );
         let bbytes = self.read().await?;
-        let strong_key = s.finish(&bbytes).unwrap();
+        let strong_key = s.finish(&bbytes)?;
         self.write(&key).await?;
         let pw_hash = new_argon(&strong_key)?;
         self.write(pw_hash.salt.ok_or(CodecError::NOSalt)?.as_bytes())

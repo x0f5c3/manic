@@ -6,7 +6,7 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-tokio-serde = { git  = "https://github.com/x0f5c3/tokio-serde", branch = "master", features = ["encrypted_bincode"]}
+tokio-serde = "0.8.0"
 tokio-util = { version = "0.7.1", features = ["codec", "net", "compat", "full"] }
 serde = { version = "*", features = ["derive"] }
 bincode = "*"
@@ -28,10 +28,12 @@ sha2 = "0.10.1"
 sha1 = "0.10.0"
 rand = "0.8.4"
 
+[dependencies.flate2]
+version = "1.0.24"
+
 [dependencies.gzp]
 version = "0.9.5"
-default-features = false
-features = ["deflate_rust", "snappy_default"]
+features = ["deflate_rust", "snappy_default", "snappy"]
 
 [target.'cfg(windows)'.dependencies.windows]
 version = "0.37.0"

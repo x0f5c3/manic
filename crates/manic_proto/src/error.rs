@@ -10,6 +10,16 @@ pub enum CodecError {
     Bincode(#[from] bincode::Error),
     #[error("Encrypted data too short, wanted at least 25, gotten {0}")]
     TooShort(usize),
+    #[error("Compression error: {0}")]
+    GZPErr(#[from] gzp::GzpError),
+    #[error("Wrong magic bytes, wanted: {MAGIC_BYTES:?}, gotten: {0:?}")]
+    MagicBytes([u8; 4]),
+    #[error("SPAKE: {0}")]
+    SPAKE(#[from] SpakeError),
+    #[error("Argon2 PWHash: {0}")]
+    PWHash(String),
+    #[error("No salt")]
+    NOSalt,
 }
 
 impl From<aead::Error> for CodecError {

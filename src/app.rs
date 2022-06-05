@@ -18,6 +18,9 @@ pub(crate) struct App {
 #[derive(Debug, Subcommand)]
 pub(crate) enum Commands {
     Completions { shell: clap_complete_command::Shell },
+    Relay,
+    Send,
+    Receive,
 }
 
 impl App {
