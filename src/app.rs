@@ -2,11 +2,11 @@ use clap::{Parser, Subcommand};
 use clap_verbosity_flag::{LogLevel, Verbosity};
 use std::path::PathBuf;
 
-#[derive(Debug, Parser)]
+#[derive(Parser)]
 pub(crate) struct App {
     #[clap(short, long)]
     pub(crate) threads: Option<u8>,
-    #[clap(short, long, flatten)]
+    #[clap(flatten)]
     pub(crate) verbose: Verbosity,
     #[clap(short, long, parse(try_from_str))]
     pub(crate) output: Option<PathBuf>,
@@ -15,7 +15,7 @@ pub(crate) struct App {
 }
 
 // TODO add commands for sending, receiving, starting a relay server and downloading files through HTTP
-#[derive(Debug, Subcommand)]
+#[derive(Subcommand)]
 pub(crate) enum Commands {
     Completions { shell: clap_complete_command::Shell },
     Relay,

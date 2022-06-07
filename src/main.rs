@@ -7,10 +7,7 @@ use manic_http::threaded::{Downloader, MultiDownloader};
 
 fn main() -> Result<()> {
     let app: App = App::new();
-    if app.debug {
-        std::env::set_var("RUST_LOG", "debug");
-        pretty_env_logger::try_init()?;
-    }
+    app.init_logging();
     let threads = if let Some(t) = app.threads { t } else { 4 };
     match app.urls.len() {
         d if d >= 2 => {

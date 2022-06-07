@@ -15,7 +15,7 @@ pub enum CodecError {
     #[error("Bincode: {0}")]
     Bincode(#[from] bincode::Error),
     #[error("Wrong magic bytes, wanted: {MAGIC_BYTES:?}, gotten: {0:?}")]
-    MagicBytes([u8; 4]),
+    MagicBytes([u8; 5]),
     #[error("SPAKE: {0}")]
     SPAKE(#[from] SpakeError),
     #[error("Argon2 PWHash: {0}")]
@@ -24,6 +24,8 @@ pub enum CodecError {
     NOSalt,
     #[error("Encrypted data too short, wanted at least 25, gotten {0}")]
     TooShort(usize),
+    #[error("Codec error: {0}")]
+    CodecErr(#[from] manic_codec::CodecError),
 }
 
 impl From<password_hash::Error> for CodecError {

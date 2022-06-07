@@ -6,3 +6,29 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+manic_proto = { path = "../manic_proto"}
+tokio-serde = "0.8.0"
+tokio-util = { version = "0.7.1", features = ["codec", "net", "compat", "full"] }
+serde = { version = "*", features = ["derive"] }
+bincode = "*"
+thiserror = "1.0.30"
+bytes = "1.1.0"
+rand_chacha = "0.3.1"
+pin-project = "1.0.10"
+rand_core = { version = "*", features = ["getrandom"] }
+chacha20poly1305 = "*"
+tokio = { version = "*", features = ["full"] }
+argon2 = "0.4.0"
+futures = "*"
+log = "0.4.14"
+nix = "*"
+time = "0.3.9"
+crc = "2.1.0"
+zeroize = { version = "1.4.3", features = ["alloc"] }
+uuid = { version = "0.8.2", features = ["v4", "serde"] }
+sha2 = "0.10.1"
+sha1 = "0.10.0"
+rand = "0.8.4"
+
+[dependencies.flate2]
+version = "1.0.24"

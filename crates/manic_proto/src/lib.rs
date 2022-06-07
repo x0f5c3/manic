@@ -1,61 +1,55 @@
 #![allow(dead_code)]
 extern crate core;
 
-mod codec;
-mod error;
 mod files;
 mod lists;
 
 pub use tokio_serde::{Framed, SymmetricallyFramed};
 pub use tokio_util::codec::{length_delimited::LengthDelimitedCodec, FramedRead, FramedWrite};
 
-pub use codec::{Codec, Reader, SymmetricalCodec, Writer};
-pub use error::CodecError;
-
-use crate::files::File;
-
-use crc::{Crc, CRC_16_IBM_SDLC};
-
+// use crate::files::File;
 use serde::{Deserialize, Serialize};
 
 pub use argon2;
 pub use chacha20poly1305;
 
 pub use zeroize::Zeroize;
+#[derive(Debug, Deserialize, Serialize)]
+pub struct Packet;
 
-#[derive(Serialize, Deserialize, Debug)]
-pub struct Packet {
-    header: Header,
-    packet: PacketType,
-}
+// #[derive(Serialize, Deserialize, Debug)]
+// pub struct Packet {
+//     header: Header,
+//     packet: PacketType,
+// }
+//
+// impl Packet {
+//     pub fn new(hostname: String, destination: String, packet: PacketType) -> Self {
+//         let header = Header::new(hostname, destination);
+//         Self { header, packet }
+//     }
+//     pub fn get_header(&self) -> &Header {
+//         &self.header
+//     }
+//     pub fn into_packet(self) -> PacketType {
+//         self.packet
+//     }
+// }
 
-impl Packet {
-    pub fn new(hostname: String, destination: String, packet: PacketType) -> Self {
-        let header = Header::new(hostname, destination);
-        Self { header, packet }
-    }
-    pub fn get_header(&self) -> &Header {
-        &self.header
-    }
-    pub fn into_packet(self) -> PacketType {
-        self.packet
-    }
-}
-
-#[derive(Serialize, Deserialize, Debug)]
-pub enum PacketType {
-    File(File),
-    KeyReq,
-}
-
-impl PacketType {
-    pub fn new_file(file: File) -> Self {
-        Self::File(file)
-    }
-    pub fn new_req() -> Self {
-        Self::KeyReq
-    }
-}
+// #[derive(Serialize, Deserialize, Debug)]
+// pub enum PacketType {
+//     File(File),
+//     KeyReq,
+// }
+//
+// impl PacketType {
+//     pub fn new_file(file: File) -> Self {
+//         Self::File(file)
+//     }
+//     pub fn new_req() -> Self {
+//         Self::KeyReq
+//     }
+// }
 
 #[derive(Serialize, Debug, Deserialize, Clone)]
 pub struct Header {
