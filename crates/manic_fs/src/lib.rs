@@ -1,4 +1,8 @@
+use anyhow::Result;
 use serde::{Deserialize, Serialize};
+use std::path::PathBuf;
+use std::time::SystemTime;
+use time::Time;
 
 #[cfg(target_os = "windows")]
 use windows::{
@@ -10,18 +14,19 @@ use windows::{
 use {nix::sys::stat, std::os::unix::prelude::AsRawFd};
 
 #[cfg(target_os = "windows")]
-pub async fn get_attrs(path: String) -> Result<BasicProperties, Box<dyn std::error::Error>> {
+pub async fn get_attrs(path: String) -> Result<BasicProperties> {
     let f: StorageFile = StorageFile::GetFileFromPathAsync(HSTRING::from(&path))?.await?;
     Ok(f.GetBasicPropertiesAsync()?.await?)
 }
 
-pub struct FileMetadata {}
+#[cfg(not(target_os = "windows"))]
+pub async fn get_attrs(path: String) -> Result<FileMetadata> {}
 
-#[cfg(test)]
-mod tests {
-    #[test]
-    fn it_works() {
-        let result = 2 + 2;
-        assert_eq!(result, 4);
-    }
+#[derive(Deserialize, Serialize)]
+pub struct FileMetadata {
+    name: String,
+    relative_path: PathBuf,
+    size: u64,
+    modified: Time,
+    created: Time,
 }
