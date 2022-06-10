@@ -25,7 +25,7 @@ pub(crate) enum Commands {
 
 impl App {
     pub(crate) fn new() -> Self {
-        Self::from_args()
+        Self::parse_from(wild::args_os())
     }
     pub(crate) fn init_logging(&self) {
         pretty_env_logger::formatted_builder()
