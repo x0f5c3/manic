@@ -103,7 +103,7 @@ impl Downloader {
     ///
     /// ```no_run
     /// use manic_http::threaded::Downloader;
-    /// # fn main() -> Result<(), manic::ManicError> {
+    /// # fn main() -> Result<(), manic_http::ManicError> {
     ///    let downloader = Downloader::new("https://crates.io", 5)?;
     ///
     /// # Ok(())

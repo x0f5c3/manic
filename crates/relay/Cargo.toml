@@ -9,6 +9,10 @@ edition = "2021"
 
 
 
+[dependencies.tracing]
+version = "0.1.35"
+
+
 [dependencies.tokio]
 version = "1.19.0"
 features = ["full"]

@@ -108,7 +108,7 @@ fn blocking(c: &mut Criterion) {
 
 criterion_group! {
     name = benches;
-    config = Criterion::default().measurement_time(Duration::from_secs(60)).sample_size(10);
+    config = Criterion::default().measurement_time(Duration::from_secs(360)).sample_size(100);
     targets = manic_bench, async_bench, blocking
 }
 criterion_main!(benches);

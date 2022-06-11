@@ -27,7 +27,7 @@
 //! ```no_run
 //! use manic_http::Downloader;
 //! #[tokio::main]
-//! async fn main() -> Result<(), manic::ManicError> {
+//! async fn main() -> Result<(), manic_http::ManicError> {
 //!     let number_of_concurrent_tasks: u8 = 5;
 //!     let client = Downloader::new("https://crates.io", number_of_concurrent_tasks).await?;
 //!     let result = client.download().await?;
@@ -39,7 +39,7 @@
 //!
 //! ```no_run
 //! use manic_http::threaded::Downloader;
-//! # fn main() -> Result<(), manic::ManicError> {
+//! # fn main() -> Result<(), manic_http::ManicError> {
 //! let client = Downloader::new("https://crates.io", 5)?;
 //! client.download()?;
 //! Ok(())

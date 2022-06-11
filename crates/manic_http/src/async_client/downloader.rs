@@ -91,7 +91,7 @@ impl Downloader {
     /// ```no_run
     /// use manic_http::Downloader;
     /// # #[tokio::main]
-    /// # async fn main() -> Result<(), manic::ManicError> {
+    /// # async fn main() -> Result<(), manic_http::ManicError> {
     ///     // If only one TLS feature is enabled
     ///     let downloader = Downloader::new("https://crates.io", 5).await?;
     ///
