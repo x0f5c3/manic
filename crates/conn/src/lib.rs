@@ -13,18 +13,24 @@ use serde::{Deserialize, Serialize};
 use spake2::{Ed25519Group, Identity, Password};
 use std::fmt::Debug;
 use std::io::{Read, Write};
+use std::net::SocketAddr;
+use std::time::Duration;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
-use tokio::net::{TcpStream, ToSocketAddrs};
+use tokio::net::{TcpSocket, TcpStream, ToSocketAddrs};
 use tokio_serde::{Deserializer, Serializer};
 use zeroize::Zeroize;
 
 pub struct StdConn(TcpStream);
 
+pub struct Server;
+
 const MAGIC_BYTES: &[u8; 5] = b"manic";
 
 impl StdConn {
-    async fn connect<A: ToSocketAddrs>(addr: A) -> Result<Self> {
-        Ok(Self(TcpStream::connect(addr).await?))
+    async fn connect<A: Into<SocketAddr>>(addr: A) -> Result<Self> {
+        let sock = TcpSocket::new_v4()?;
+        sock.set_linger(Some(Duration::from_secs(30)))?;
+        Ok(Self(sock.connect(addr.into()).await?))
     }
     async fn read(&mut self) -> Result<Vec<u8>> {
         let mut header = [0; 5];
@@ -48,7 +54,7 @@ impl StdConn {
     }
     async fn init_curve_a(mut self, shared: String) -> Result<Conn> {
         let (s, key) = spake2::Spake2::<Ed25519Group>::start_a(
-            &Password::new(shared),
+            &Password::new(&shared[5..]),
             &Identity::new(b"server"),
             &Identity::new(b"client"),
         );
@@ -63,7 +69,7 @@ impl StdConn {
 
     async fn init_curve_b(mut self, shared: String) -> Result<Conn> {
         let (s, key) = spake2::Spake2::<Ed25519Group>::start_b(
-            &Password::new(shared),
+            &Password::new(&shared[5..]),
             &Identity::new(b"server"),
             &Identity::new(b"client"),
         );
@@ -104,7 +110,11 @@ impl Conn {
         Ok(())
     }
     pub async fn recv(&mut self) -> Result<Packet> {
-        let res = self.encoded_recv.next().await??;
+        let res = self
+            .encoded_recv
+            .next()
+            .await
+            .unwrap_or(Err(CodecError::NOSalt));
         Ok(res)
     }
 }
