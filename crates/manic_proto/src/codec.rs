@@ -1,17 +1,15 @@
-use crate::error::CodecError;
+use crate::{CodecError, Packet};
 use bytes::{Bytes, BytesMut};
 use chacha20poly1305::aead::Aead;
 use chacha20poly1305::aead::NewAead;
-use chacha20poly1305::Key as ChaChaKey;
 use chacha20poly1305::{XChaCha20Poly1305, XNonce};
 use flate2::Compression;
 use futures::{ready, Sink, Stream, TryStream};
 use log::debug;
-use manic_proto::Packet;
 use pin_project_lite::pin_project;
 use rand::RngCore;
-use rand_chacha::{rand_core::SeedableRng, ChaCha20Rng};
-use std::io::{Read, Write};
+use rand_chacha::rand_core::SeedableRng;
+use rand_chacha::ChaCha20Rng;
 use std::pin::Pin;
 use std::task::{Context, Poll};
 use tokio::net::tcp::{OwnedReadHalf, OwnedWriteHalf};
@@ -52,15 +50,13 @@ impl Serializer<Packet> for Codec {
         let mut nonce = XNonce::default();
         let mut rng = ChaCha20Rng::from_entropy();
         rng.fill_bytes(&mut nonce);
-        let key = ChaChaKey::from_slice(self.key.as_slice());
         let mut res = nonce.to_vec();
         debug!("To serialize: {:?}", item);
-        let ser = bincode::serialize(&item)?;
         let mut writer = Vec::new();
         let mut parz = flate2::write::DeflateEncoder::new(&mut writer, Compression::best());
-        parz.write_all(&ser)?;
+        bincode::encode_into_std_write(&item, &mut parz, bincode::config::standard())?;
         let finished = parz.finish()?;
-        debug!("Serialized: {:?}", ser);
+        debug!("Serialized: {:?}", finished);
         res.append(&mut self.cha.encrypt(&nonce, finished.as_slice())?.to_vec());
         debug!("Encrypted: {:?}", res);
         Ok(Bytes::from(res))
@@ -80,9 +76,8 @@ impl Deserializer<Packet> for Codec {
             .decrypt(XNonce::from_slice(&src[..24]), &src[24..])?;
         debug!("Decrypted: {:?}", dec);
         let mut decompress = flate2::read::DeflateDecoder::new(dec.as_slice());
-        let mut decompressed = Vec::new();
-        decompress.read_to_end(&mut decompressed)?;
-        let res: Packet = bincode::deserialize(decompressed.as_slice())?;
+        let res: Packet =
+            bincode::decode_from_std_read(&mut decompress, bincode::config::standard())?;
         debug!("Deserialized: {:?}", res);
         Ok(res)
     }
@@ -133,16 +128,6 @@ impl Reader {
         Self { inner, codec }
     }
 }
-
-// impl AsMut<Framed<FramedRead<OwnedReadHalf, LengthDelimitedCodec>, Packet, Packet, Codec>>
-//     for Reader
-// {
-//     fn as_mut(
-//         &mut self,
-//     ) -> &mut Framed<FramedRead<OwnedReadHalf, LengthDelimitedCodec>, Packet, Packet, Codec> {
-//         &mut self.inner
-//     }
-// }
 
 impl Sink<Packet> for Writer {
     type Error = CodecError;

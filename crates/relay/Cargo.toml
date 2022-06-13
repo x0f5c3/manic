@@ -9,7 +9,7 @@ resolver = "2"
 secrecy = "0.8.0"
 educe = "0.4.19"
 time = "0.3.9"
-
+os_pipe = "1.0.1"
 
 
 [dependencies.tracing]

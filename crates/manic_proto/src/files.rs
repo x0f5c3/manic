@@ -1,25 +1,4 @@
-use crc::CRC_16_IBM_SDLC;
-#[cfg(target_os = "linux")]
-use nix::sys::stat;
 use serde::{Deserialize, Serialize};
-use std::fs;
-use std::io::{ErrorKind, Read};
-#[cfg(target_os = "linux")]
-use std::os::unix::prelude::AsRawFd;
-use std::path::Path;
-use time::{Date, OffsetDateTime};
-
-#[cfg(target_os = "windows")]
-use windows::{
-    core::HSTRING,
-    Storage::{FileProperties::BasicProperties, StorageFile},
-};
-
-#[cfg(target_os = "windows")]
-pub async fn get_attrs(path: String) -> Result<BasicProperties, Box<dyn std::error::Error>> {
-    let f: StorageFile = StorageFile::GetFileFromPathAsync(HSTRING::from(&path))?.await?;
-    Ok(f.GetBasicPropertiesAsync()?.await?)
-}
 
 pub const CHUNK_SIZE: usize = 1024;
 

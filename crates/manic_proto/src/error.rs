@@ -7,14 +7,18 @@ pub enum CodecError {
     IOErr(#[from] std::io::Error),
     #[error("AEAD: {0}")]
     EncErr(String),
-    #[error("Bincode: {0}")]
-    Bincode(#[from] bincode::Error),
+    #[error("Bincode decode: {0}")]
+    Bincode(#[from] bincode::error::DecodeError),
+    #[error("Bincode encode: {0}")]
+    BincodeEnc(#[from] bincode::error::EncodeError),
     #[error("Encrypted data too short, wanted at least 25, gotten {0}")]
     TooShort(usize),
     #[error("Argon2 PWHash: {0}")]
     PWHash(String),
     #[error("No salt")]
     NOSalt,
+    #[error("Bad filename")]
+    BadFileName,
 }
 
 impl From<aead::Error> for CodecError {

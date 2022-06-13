@@ -1,20 +1,23 @@
 #![allow(dead_code)]
 extern crate core;
 
+mod codec;
+mod error;
 mod files;
 mod lists;
-
-pub use tokio_serde::{Framed, SymmetricallyFramed};
-pub use tokio_util::codec::{length_delimited::LengthDelimitedCodec, FramedRead, FramedWrite};
+mod transferinfo;
 
 // use crate::files::File;
 use serde::{Deserialize, Serialize};
 
-pub use argon2;
 pub use chacha20poly1305;
 
+pub use bincode;
+use bincode::{Decode, Encode};
+pub use error::CodecError;
+
 pub use zeroize::Zeroize;
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Debug, Deserialize, Serialize, Encode, Decode)]
 pub struct Packet;
 
 // #[derive(Serialize, Deserialize, Debug)]
