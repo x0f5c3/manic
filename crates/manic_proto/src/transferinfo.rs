@@ -1,31 +1,45 @@
 use crate::error::CodecError;
+use crate::error::Result;
+use bincode::de::Decoder;
+use bincode::enc::Encoder;
+use bincode::error::{DecodeError, EncodeError};
 use bincode::{Decode, Encode};
-use serde::{Deserialize, Serialize};
-use std::error::Error;
 use std::path::{Path, PathBuf};
-use time::OffsetDateTime;
+use std::time::SystemTime;
 
-#[derive(Deserialize, Serialize, Encode, Decode, PartialEq, Debug, Clone)]
+#[derive(Encode, Decode, PartialEq, Debug, Clone)]
 pub struct Metadata {
     pub filesize: u64,
     pub filename: String,
-    #[bincode(with_serde)]
-    pub c_time: OffsetDateTime,
-    #[bincode(with_serde)]
-    pub m_time: OffsetDateTime,
+    pub c_time: SystemTime,
+    pub m_time: SystemTime,
 }
 
 /// Contains the metadata for all files that will be sent
 /// during a particular transfer
-#[derive(Serialize, Deserialize, PartialEq, Debug, Clone)]
+#[derive(PartialEq, Debug, Clone)]
 pub struct TransferInfo {
     /// The metadata to send to the peer. These
     /// filenames are striped of their path information
     pub all: Vec<Metadata>,
 
     /// Internal state for a sender to locate files
-    #[serde(skip)]
     pub localpaths: Vec<PathBuf>,
+}
+
+impl Decode for TransferInfo {
+    fn decode<D: Decoder>(decoder: &mut D) -> std::result::Result<Self, DecodeError> {
+        Ok(Self {
+            all: Decode::decode(decoder)?,
+            localpaths: Vec::new(),
+        })
+    }
+}
+
+impl Encode for TransferInfo {
+    fn encode<E: Encoder>(&self, encoder: &mut E) -> std::result::Result<(), EncodeError> {
+        Encode::encode(&self.all, encoder)
+    }
 }
 
 impl TransferInfo {
@@ -54,7 +68,7 @@ impl TransferInfo {
     }
 
     /// Add a file to this transfer
-    pub fn add_file<'a>(&'a mut self, path: &Path) -> Result<&'a mut TransferInfo, Box<dyn Error>> {
+    pub fn add_file(&mut self, path: &Path) -> Result<&mut TransferInfo> {
         self.localpaths.push(path.to_path_buf());
         let meta = path.metadata()?;
         let filesize = meta.len();
@@ -66,8 +80,8 @@ impl TransferInfo {
                 .to_str()
                 .ok_or(CodecError::BadFileName)?
                 .to_string(),
-            c_time: meta.created()?.into(),
-            m_time: meta.modified()?.into(),
+            c_time: meta.created()?,
+            m_time: meta.modified()?,
         });
         Ok(self)
     }

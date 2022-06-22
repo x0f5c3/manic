@@ -1,3 +1,4 @@
+#![allow(dead_code)]
 use educe::Educe;
 use secrecy::{SecretString, SecretVec};
 use tokio::net::TcpStream;

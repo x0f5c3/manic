@@ -25,6 +25,7 @@ tokio = { version = "*", features = ["full"] }
 argon2 = "0.4.0"
 futures = "*"
 rand = "0.8.5"
+spake2 = "0.3.1"
 
 
 [dependencies.flate2]

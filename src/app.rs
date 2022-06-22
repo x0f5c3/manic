@@ -1,5 +1,5 @@
 use clap::{Parser, Subcommand};
-use clap_verbosity_flag::{LogLevel, Verbosity};
+use clap_verbosity_flag::Verbosity;
 use std::path::PathBuf;
 
 #[derive(Parser)]

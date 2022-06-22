@@ -1,24 +1,20 @@
-mod error;
+#![allow(dead_code)]
 mod tcp;
 
-use crate::error::CodecError;
 use argon2::password_hash::SaltString;
 use argon2::{Argon2, PasswordHasher};
-use chacha20poly1305::{aead::Aead, aead::NewAead};
-use error::Result;
+use bincode::config::standard;
 use futures::{SinkExt, StreamExt};
-use manic_codec::{Packet, Reader, Writer};
-use rand_core::{OsRng, RngCore, SeedableRng};
-use serde::{Deserialize, Serialize};
+use manic_proto::bincode;
+use manic_proto::{CodecError, Result};
+use manic_proto::{Packet, Reader, Writer};
+use rand_core::OsRng;
 use spake2::{Ed25519Group, Identity, Password};
-use std::fmt::Debug;
-use std::io::{Read, Write};
+
 use std::net::SocketAddr;
 use std::time::Duration;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
-use tokio::net::{TcpSocket, TcpStream, ToSocketAddrs};
-use tokio_serde::{Deserializer, Serializer};
-use zeroize::Zeroize;
+use tokio::net::{TcpSocket, TcpStream};
 
 pub struct StdConn(TcpStream);
 
@@ -34,60 +30,49 @@ impl StdConn {
     }
     async fn read(&mut self) -> Result<Vec<u8>> {
         let mut header = [0; 5];
-        self.0.read(&mut header).await?;
+        self.0.read_exact(&mut header).await?;
         if &header != MAGIC_BYTES {
             return Err(CodecError::MagicBytes(header));
         }
         header = [0; 5];
-        self.0.read(&mut header).await?;
-        let data_size: u32 = bincode::deserialize(&header)?;
+        self.0.read_exact(&mut header).await?;
+        let (data_size, _len): (u32, usize) =
+            bincode::decode_from_slice(header.as_slice(), standard())?;
         let mut buf: Vec<u8> = (0..data_size).into_iter().map(|_| 0).collect();
-        self.0.read(&mut buf).await?;
+        self.0.read_exact(&mut buf).await?;
         Ok(buf)
     }
     async fn write(&mut self, buf: &[u8]) -> Result<()> {
-        let mut header = MAGIC_BYTES.clone();
-        self.0.write(&header).await?;
+        let header = *MAGIC_BYTES;
+        self.0.write_all(&header).await?;
         let data_size = buf.len() as u32;
-        self.0.write(&bincode::serialize(&data_size)?).await?;
+        self.0
+            .write_all(&bincode::encode_to_vec(&data_size, standard())?)
+            .await?;
+        self.0
+            .write_all(&bincode::encode_to_vec(buf, standard())?)
+            .await?;
         Ok(())
     }
-    async fn init_curve_a(mut self, shared: String) -> Result<Conn> {
-        let (s, key) = spake2::Spake2::<Ed25519Group>::start_a(
-            &Password::new(&shared[5..]),
-            &Identity::new(b"server"),
-            &Identity::new(b"client"),
-        );
-        self.write(&key).await?;
-        let bbytes = self.read().await?;
-        let strong_key = s.finish(&bbytes)?;
-        let pw_hash = new_argon(&strong_key)?;
-        self.write(pw_hash.salt.ok_or(CodecError::NOSalt)?.as_bytes())
-            .await?;
-        Conn::new(self.0, pw_hash.to_string().as_bytes().to_vec())
-    }
 
-    async fn init_curve_b(mut self, shared: String) -> Result<Conn> {
-        let (s, key) = spake2::Spake2::<Ed25519Group>::start_b(
+    async fn init_curve(mut self, shared: String) -> Result<Conn> {
+        let (s, key) = spake2::Spake2::<Ed25519Group>::start_symmetric(
             &Password::new(&shared[5..]),
-            &Identity::new(b"server"),
-            &Identity::new(b"client"),
+            &Identity::new((&shared[1..5]).as_ref()),
         );
         let bbytes = self.read().await?;
         let strong_key = s.finish(&bbytes)?;
         self.write(&key).await?;
-        let pw_hash = new_argon(&strong_key)?;
+        let salt = SaltString::generate(&mut OsRng);
+        let pw_hash = Argon2::default().hash_password(&strong_key, &salt)?;
         self.write(pw_hash.salt.ok_or(CodecError::NOSalt)?.as_bytes())
             .await?;
+        let maybe_salt = self.read().await?;
+        if maybe_salt != pw_hash.salt.ok_or(CodecError::NOSalt)?.as_bytes() {
+            return Err(CodecError::NOSalt);
+        }
         Conn::new(self.0, pw_hash.to_string().as_bytes().to_vec())
     }
-}
-
-pub fn new_argon<'a>(pw: &[u8]) -> Result<argon2::PasswordHash<'a>> {
-    let salt = SaltString::generate(&mut OsRng);
-    Argon2::default()
-        .hash_password(pw, &salt)
-        .map_err(CodecError::from)
 }
 
 pub struct Conn {
@@ -115,6 +100,6 @@ impl Conn {
             .next()
             .await
             .unwrap_or(Err(CodecError::NOSalt));
-        Ok(res)
+        res
     }
 }

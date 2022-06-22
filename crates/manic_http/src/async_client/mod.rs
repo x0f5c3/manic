@@ -9,6 +9,4 @@ pub use multi::MultiDownloaderBuilder;
 
 mod chunk;
 mod downloader;
-#[cfg(feature = "hyper_client")]
-pub mod hyper_client;
 mod multi;
