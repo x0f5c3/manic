@@ -28,7 +28,7 @@ pub struct Downloader {
     chunks: Chunks,
     pool: ThreadPool,
     #[cfg(feature = "progress")]
-    pb: Option<indicatif::ProgressBar>,
+    pb: Option<ProgressBar>,
 }
 
 impl Downloader {
@@ -132,10 +132,10 @@ impl Downloader {
     /// Enable progress reporting
     #[cfg(feature = "progress")]
     pub fn progress_bar(&mut self) -> &mut Self {
-        self.pb = Some(indicatif::ProgressBar::new(self.length));
+        self.pb = Some(ProgressBar::new(self.length));
         self
     }
-    /// Connect the `ProgressBar`[indicatif::ProgressBar] to the `MultiProgress`[indicatif::MultiProgress]
+    /// Connect the `ProgressBar`[ProgressBar] to the `MultiProgress`[indicatif::MultiProgress]
     #[cfg(feature = "progress")]
     pub fn connect_progress(&mut self, pb: ProgressBar) {
         self.pb = Some(pb);

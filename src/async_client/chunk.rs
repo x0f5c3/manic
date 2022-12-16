@@ -3,7 +3,6 @@ use super::Client;
 use crate::header::RANGE;
 use crate::Hash;
 use crate::{ManicError, Result};
-use futures::StreamExt;
 #[cfg(feature = "progress")]
 use indicatif::ProgressBar;
 use rayon::prelude::*;
@@ -88,14 +87,13 @@ impl Chunk {
     pub(crate) async fn save(self, mut output: File) -> Result<()> {
         output.seek(SeekFrom::Start(self.low)).await?;
         info!("Seeked");
-        let n = output.write(self.buf.as_slice()).await?;
-        info!("Written {} bytes", n);
+        output.write_all(self.buf.as_slice()).await?;
         Ok(())
     }
     #[instrument(skip(self, client, pb), fields(range = %self.bytes))]
     pub(crate) async fn download(
         mut self,
-        client: Client,
+        client: &Client,
         url: String,
         #[cfg(feature = "progress")] pb: Option<ProgressBar>,
     ) -> Result<Self> {
@@ -104,26 +102,12 @@ impl Chunk {
             .header(RANGE, self.bytes.clone())
             .send()
             .await?;
-        let mut res: Vec<u8> = resp
-            .bytes_stream()
-            .filter_map(
-                |x: std::result::Result<bytes::Bytes, reqwest::Error>| async {
-                    if let Ok(byt) = x {
-                        #[cfg(feature = "progress")]
-                        if let Some(bar) = &pb {
-                            bar.inc(byt.len() as u64);
-                        }
-                        return Some(byt.to_vec());
-                    }
-                    None
-                },
-            )
-            .collect::<Vec<Vec<u8>>>()
-            .await
-            .into_iter()
-            .flatten()
-            .collect();
-        self.buf.append(&mut res);
+        let b = resp.bytes().await?;
+        #[cfg(feature = "progress")]
+        if let Some(bar) = pb {
+            bar.inc(b.len() as u64);
+        }
+        self.buf = b.to_vec();
         Ok(self)
     }
 }
@@ -147,14 +131,14 @@ impl Chunks {
     }
     pub async fn download(
         &self,
-        client: Client,
+        client: &Client,
         url: String,
         #[cfg(feature = "progress")] pb: Option<ProgressBar>,
     ) -> Result<ChunkVec> {
         let fut_vec = self
             .map(|x| {
                 x.download(
-                    client.clone(),
+                    client,
                     url.clone(),
                     #[cfg(feature = "progress")]
                     pb.clone(),

@@ -26,7 +26,7 @@ pub struct Downloader {
     length: u64,
     chunks: Chunks,
     #[cfg(feature = "progress")]
-    pb: Option<indicatif::ProgressBar>,
+    pb: Option<ProgressBar>,
 }
 
 impl Downloader {
@@ -118,7 +118,7 @@ impl Downloader {
     /// Enable progress reporting
     #[cfg(feature = "progress")]
     pub fn progress_bar(&mut self) -> &mut Self {
-        self.pb = Some(indicatif::ProgressBar::new(self.length));
+        self.pb = Some(ProgressBar::new(self.length));
         self
     }
     #[cfg(feature = "progress")]
@@ -164,7 +164,7 @@ impl Downloader {
         let pb = self.pb.clone();
         let result = chnks
             .download(
-                client,
+                &client,
                 url.to_string(),
                 #[cfg(feature = "progress")]
                 pb,
