@@ -1,4 +1,4 @@
-use crate::error::CodecError;
+use crate::error::CrocError;
 use crate::error::Result;
 use bincode::de::Decoder;
 use bincode::enc::Encoder;
@@ -76,9 +76,9 @@ impl TransferInfo {
             filesize,
             filename: path
                 .file_name()
-                .ok_or(CodecError::BadFileName)?
+                .ok_or(CrocError::BadFileName)?
                 .to_str()
-                .ok_or(CodecError::BadFileName)?
+                .ok_or(CrocError::BadFileName)?
                 .to_string(),
             c_time: meta.created()?,
             m_time: meta.modified()?,

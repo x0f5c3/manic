@@ -1,8 +1,8 @@
-use crate::{CodecError, Packet};
+use crate::{CrocError, Packet};
 use bytes::{Bytes, BytesMut};
 use chacha20poly1305::aead::Aead;
 use chacha20poly1305::aead::NewAead;
-use chacha20poly1305::{XChaCha20Poly1305, XNonce};
+use chacha20poly1305::{KeyInit, XChaCha20Poly1305, XNonce};
 use flate2::Compression;
 use futures::{ready, Sink, Stream, TryStream};
 use log::debug;
@@ -44,7 +44,7 @@ impl Codec {
 }
 
 impl Serializer<Packet> for Codec {
-    type Error = CodecError;
+    type Error = CrocError;
 
     fn serialize(self: Pin<&mut Self>, item: &Packet) -> Result<Bytes, Self::Error> {
         let mut nonce = XNonce::default();
@@ -64,11 +64,11 @@ impl Serializer<Packet> for Codec {
 }
 
 impl Deserializer<Packet> for Codec {
-    type Error = CodecError;
+    type Error = CrocError;
 
     fn deserialize(self: Pin<&mut Self>, src: &BytesMut) -> Result<Packet, Self::Error> {
         if src.len() < 25 {
-            return Err(CodecError::TooShort(src.len()));
+            return Err(CrocError::TooShort(src.len()));
         }
         debug!("To decrypt: {:?}", src);
         let dec = self
@@ -130,13 +130,13 @@ impl Reader {
 }
 
 impl Sink<Packet> for Writer {
-    type Error = CodecError;
+    type Error = CrocError;
 
     fn poll_ready(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
         self.project()
             .inner
             .poll_ready(cx)
-            .map_err(CodecError::from)
+            .map_err(CrocError::from)
     }
 
     fn start_send(mut self: Pin<&mut Self>, item: Packet) -> Result<(), Self::Error> {
@@ -144,26 +144,26 @@ impl Sink<Packet> for Writer {
         self.project()
             .inner
             .start_send(res)
-            .map_err(CodecError::from)
+            .map_err(CrocError::from)
     }
 
     fn poll_flush(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
         self.project()
             .inner
             .poll_flush(cx)
-            .map_err(CodecError::from)
+            .map_err(CrocError::from)
     }
 
     fn poll_close(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
         self.project()
             .inner
             .poll_close(cx)
-            .map_err(CodecError::from)
+            .map_err(CrocError::from)
     }
 }
 
 impl Stream for Reader {
-    type Item = Result<Packet, CodecError>;
+    type Item = Result<Packet, CrocError>;
 
     fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
         match ready!(self.as_mut().project().inner.try_poll_next(cx)) {

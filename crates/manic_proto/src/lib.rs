@@ -19,11 +19,15 @@ pub use bincode;
 
 use bincode::{Decode, Encode};
 pub use codec::{Codec, Reader, Writer};
-pub use error::CodecError;
+pub use error::CrocError;
 
 pub use zeroize::Zeroize;
 #[derive(Debug, Deserialize, Serialize, Encode, Decode)]
-pub struct Packet;
+pub struct Packet {
+    magic: [u8;5],
+    header: u32,
+    data: Vec<u8>,
+}
 
 // #[derive(Serialize, Deserialize, Debug)]
 // pub struct Packet {

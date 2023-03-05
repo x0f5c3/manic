@@ -6,7 +6,7 @@ use argon2::{Argon2, PasswordHasher};
 use bincode::config::standard;
 use futures::{SinkExt, StreamExt};
 use manic_proto::bincode;
-use manic_proto::{CodecError, Result};
+use manic_proto::{CrocError, Result};
 use manic_proto::{Packet, Reader, Writer};
 use rand_core::OsRng;
 use spake2::{Ed25519Group, Identity, Password};
@@ -32,7 +32,7 @@ impl StdConn {
         let mut header = [0; 5];
         self.0.read_exact(&mut header).await?;
         if &header != MAGIC_BYTES {
-            return Err(CodecError::MagicBytes(header));
+            return Err(CrocError::MagicBytes(header));
         }
         header = [0; 5];
         self.0.read_exact(&mut header).await?;
@@ -65,11 +65,11 @@ impl StdConn {
         self.write(&key).await?;
         let salt = SaltString::generate(&mut OsRng);
         let pw_hash = Argon2::default().hash_password(&strong_key, &salt)?;
-        self.write(pw_hash.salt.ok_or(CodecError::NOSalt)?.as_bytes())
+        self.write(pw_hash.salt.ok_or(CrocError::NOSalt)?.as_bytes())
             .await?;
         let maybe_salt = self.read().await?;
-        if maybe_salt != pw_hash.salt.ok_or(CodecError::NOSalt)?.as_bytes() {
-            return Err(CodecError::NOSalt);
+        if maybe_salt != pw_hash.salt.ok_or(CrocError::NOSalt)?.as_bytes() {
+            return Err(CrocError::NOSalt);
         }
         Conn::new(self.0, pw_hash.to_string().as_bytes().to_vec())
     }
@@ -99,7 +99,7 @@ impl Conn {
             .encoded_recv
             .next()
             .await
-            .unwrap_or(Err(CodecError::NOSalt));
+            .unwrap_or(Err(CrocError::NOSalt));
         res
     }
 }

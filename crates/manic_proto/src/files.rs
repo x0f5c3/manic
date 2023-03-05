@@ -1,5 +1,12 @@
 use serde::{Deserialize, Serialize};
 
+
+pub struct Chunk {
+    size: usize,
+    offset: u64,
+    data: Option<Vec<u8>>,
+}
+
 pub const CHUNK_SIZE: usize = 1024;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
