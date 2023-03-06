@@ -3,15 +3,16 @@ mod comm;
 mod compress;
 mod croc;
 mod crypt;
+mod error;
 mod install;
 mod message;
 mod models;
 mod tcp;
 mod utils;
-mod error;
+mod xxwriter;
 
-
-pub use error::{Result, CodecError, SpakeError, PWHashError};
+pub use error::{CrocError, PWHashError, Result, SpakeError};
+pub const MAGIC_BYTES: &[u8] = b"manic";
 
 pub fn add(left: usize, right: usize) -> usize {
     left + right

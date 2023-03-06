@@ -4,9 +4,9 @@ use chacha20poly1305::aead;
 // use std::io::{Error, ErrorKind};
 use thiserror::Error;
 
-pub type Result<T> = std::result::Result<T, CodecError>;
+pub type Result<T> = std::result::Result<T, CrocError>;
 #[derive(Debug, Error)]
-pub enum CodecError {
+pub enum CrocError {
     #[error("{0}")]
     IOErr(#[from] std::io::Error),
     #[error("AEAD: {0}")]
@@ -29,19 +29,19 @@ pub enum CodecError {
     BadFileName,
 }
 
-impl From<password_hash::Error> for CodecError {
+impl From<password_hash::Error> for CrocError {
     fn from(e: password_hash::Error) -> Self {
         Self::PWHash(e.to_string())
     }
 }
 
-impl From<aead::Error> for CodecError {
+impl From<aead::Error> for CrocError {
     fn from(e: aead::Error) -> Self {
         Self::EncErr(e.to_string())
     }
 }
 
-impl From<spake2::Error> for CodecError {
+impl From<spake2::Error> for CrocError {
     fn from(e: spake2::Error) -> Self {
         Self::SPAKE(e.into())
     }
