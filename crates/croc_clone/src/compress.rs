@@ -41,8 +41,8 @@ pub fn compress_level(data: &[u8], level: u32) -> Result<XXWriter<Vec<u8>>> {
     Ok(crc_w)
 }
 
-pub fn compress(data: &[u8]) -> Result<XXWriter<Vec<u8>>> {
-    compress_level(data, 2)
+pub fn compress(data: &[u8]) -> Result<CrcWriter<Vec<u8>>> {
+    compress_level(data, 0)
 }
 
 pub fn compress_io<R: Read, W: Write>(mut src: R, dst: W, level: u32) -> Result<()> {

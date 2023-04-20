@@ -75,8 +75,3 @@ impl From<spake2::Error> for SpakeError {
         }
     }
 }
-
-pub enum PWHashError {
-    Algorithm,
-    B64,
-}

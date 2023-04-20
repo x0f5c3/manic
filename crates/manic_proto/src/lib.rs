@@ -8,23 +8,25 @@ mod lists;
 mod transferinfo;
 
 pub const MAGIC_BYTES: &[u8; 5] = b"manic";
-pub use error::Result;
 
 // use crate::files::File;
 use serde::{Deserialize, Serialize};
 
 pub use chacha20poly1305;
 
+pub use codec::{Codec, Reader, Writer};
+
 pub use bincode;
 
 use bincode::{Decode, Encode};
 pub use codec::{Codec, Reader, Writer};
 pub use error::CrocError;
+pub use error::{CodecError, Result};
 
 pub use zeroize::Zeroize;
 #[derive(Debug, Deserialize, Serialize, Encode, Decode)]
 pub struct Packet {
-    magic: [u8;5],
+    magic: [u8; 5],
     header: u32,
     data: Vec<u8>,
 }

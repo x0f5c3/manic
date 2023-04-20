@@ -6,7 +6,7 @@ async fn remote() -> manic_http::Result<()> {
     let _ = pretty_env_logger::formatted_builder()
         .filter(Some("manic"), LevelFilter::Debug)
         .try_init();
-    for i in 1..=5 {
+    for i in 1..=30 {
         let mut dl = Downloader::new(
             "https://github.com/schollz/croc/releases/download/v9.2.0/croc_9.2.0_Windows-64bit.zip",
             i,

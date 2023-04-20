@@ -1,10 +1,12 @@
 use crate::{CrocError, Result};
 use argon2::password_hash::SaltString;
 use argon2::{Argon2, PasswordHasher};
+use chacha20poly1305::aead::NewAead;
 use chacha20poly1305::{
-    aead::{Aead, AeadCore, KeyInit, OsRng},
+    aead::{Aead, AeadCore},
     Key, XChaCha20Poly1305,
 };
+use rand_core::{CryptoRng, OsRng, RngCore};
 
 pub fn new_argon2(passphrase: &[u8]) -> Result<String> {
     let ar = Argon2::default();

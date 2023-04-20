@@ -1,3 +1,6 @@
+mod adjectives;
+mod nouns;
+
 use rand::{Rng, RngCore};
 
 pub fn words_required(len: i32) -> i32 {
