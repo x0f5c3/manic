@@ -2,11 +2,11 @@ use crate::{CrocError, Result};
 use argon2::password_hash::SaltString;
 use argon2::{Argon2, PasswordHasher};
 use chacha20poly1305::aead::NewAead;
-use chacha20poly1305::{
-    aead::{Aead, AeadCore},
-    Key, XChaCha20Poly1305,
-};
-use rand_core::{CryptoRng, OsRng, RngCore};
+use chacha20poly1305::{aead::Aead, Key, XChaCha20Poly1305};
+use common::chacha20poly1305::aead::generic_array::sequence::GenericSequence;
+use common::chacha20poly1305::XNonce;
+use common::rand_core::{CryptoRng, OsRng, RngCore};
+use common::{argon2, chacha20poly1305};
 
 pub fn new_argon2(passphrase: &[u8]) -> Result<String> {
     let ar = Argon2::default();
@@ -19,6 +19,7 @@ pub fn encrypt_chacha(plain: &[u8], passphrase: &[u8]) -> Result<Vec<u8>> {
     let pw = new_argon2(passphrase)?;
     let key = Key::from_slice(pw.as_bytes());
     let cipher = XChaCha20Poly1305::new(key);
-    let nonce = XChaCha20Poly1305::generate_nonce(&mut OsRng);
+    let mut nonce = XNonce::default();
+    OsRng.fill_bytes(&mut nonce);
     cipher.encrypt(&nonce, plain).map_err(CrocError::from)
 }

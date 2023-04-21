@@ -5,6 +5,7 @@ use bincode::{Decode, Encode};
 pub enum Message {
     PAKE { pake: Vec<u8>, curve: Vec<u8> },
     ExternalIP { external: String, bytes: Vec<u8> },
+    Banner(Vec<u64>),
     Finished,
     Error(String),
     CloseRecipient,

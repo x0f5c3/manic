@@ -1,0 +1,29 @@
+[package]
+name = "manic_crypto"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+thiserror = "1.0.40"
+chacha20poly1305 = "0.10.1"
+zeroize = { version = "1.6.0", features = ["alloc"] }
+argon2 = "0.5.0"
+spake2 = "0.3.1"
+
+
+[dependencies.aes-gcm-siv]
+version = "0.11.1"
+
+[dependencies.aes-gcm]
+version = "0.10.1"
+features = ["std", "stream"]
+
+[dependencies.opaque-ke]
+version = "3.0.0-pre.2"
+features = ["argon2", "curve25519", "std"]
+
+[dependencies.password-hash]
+version = "0.5.0"
+features = ["getrandom"]

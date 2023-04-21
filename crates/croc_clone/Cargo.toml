@@ -6,35 +6,36 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-serde = { version = "*", features = ["derive"] }
-bincode = { version = "2.0.0-rc.1", features = ["serde", "derive"] }
+common = { path = "../common" }
+#serde = { version = "*", features = ["derive"] }
+#bincode = { version = "2.0.0-rc.1", features = ["serde", "derive"] }
 thiserror = "1.0.30"
-chacha20poly1305 = "*"
-log = "0.4.14"
-time = { version = "0.3.9", features = ["serde-human-readable", "serde-well-known", "serde"] }
-crc = "3.0.1"
-zeroize = { version = "1.4.3", features = ["alloc"] }
-tokio-serde = "0.8.0"
-tokio-util = { version = "0.7.1", features = ["codec", "net", "compat", "full"] }
-bytes = "1.1.0"
-rand_chacha = "0.3.1"
-pin-project = "1.0.10"
-pin-project-lite = "0.2.9"
-rand_core = { version = "*", features = ["getrandom"] }
-tokio = { version = "*", features = ["full"] }
-argon2 = "0.5.0"
-futures = "*"
-rand = "0.8.5"
-spake2 = "0.3.1"
-
-
-[dependencies.tracing]
-version = "0.1.37"
-
-[dependencies.xxhash-rust]
-version = "*"
-features = ["xxh3"]
-
-
-[dependencies.flate2]
-version = "1.0.24"
+#chacha20poly1305 = "*"
+#log = "0.4.14"
+#time = { version = "0.3.9", features = ["serde-human-readable", "serde-well-known", "serde"] }
+#crc = "3.0.1"
+#zeroize = { version = "1.4.3", features = ["alloc"] }
+#tokio-serde = "0.8.0"
+#tokio-util = { version = "0.7.1", features = ["codec", "net", "compat", "full"] }
+#bytes = "1.1.0"
+#rand_chacha = "0.3.1"
+#pin-project = "1.0.10"
+#pin-project-lite = "0.2.9"
+#rand_core = { version = "*", features = ["getrandom"] }
+#tokio = { version = "*", features = ["full"] }
+#argon2 = "0.5.0"
+#futures = "*"
+#rand = "0.8.5"
+#spake2 = "0.3.1"
+#
+#
+#[dependencies.tracing]
+#version = "0.1.37"
+#
+#[dependencies.xxhash-rust]
+#version = "*"
+#features = ["xxh3"]
+#
+#
+#[dependencies.flate2]
+#version = "1.0.24"

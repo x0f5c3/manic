@@ -1,0 +1,21 @@
+[package]
+name = "peer_discovery"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+thiserror = "1.0.40"
+
+
+[dependencies.socket2]
+version = "0.5.2"
+
+[dependencies.tokio]
+version = "1.27.0"
+features = ["full"]
+
+
+[dependencies.buildstructor]
+version = "0.5.2"
