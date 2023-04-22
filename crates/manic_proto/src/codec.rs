@@ -1,7 +1,6 @@
 use crate::{CrocError, Packet};
 use bytes::{Bytes, BytesMut};
 use chacha20poly1305::aead::Aead;
-use chacha20poly1305::aead::NewAead;
 use chacha20poly1305::{KeyInit, XChaCha20Poly1305, XNonce};
 use flate2::Compression;
 use futures::{ready, Sink, Stream, TryStream};
@@ -133,10 +132,7 @@ impl Sink<Packet> for Writer {
     type Error = CrocError;
 
     fn poll_ready(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
-        self.project()
-            .inner
-            .poll_ready(cx)
-            .map_err(CrocError::from)
+        self.project().inner.poll_ready(cx).map_err(CrocError::from)
     }
 
     fn start_send(mut self: Pin<&mut Self>, item: Packet) -> Result<(), Self::Error> {
@@ -148,17 +144,11 @@ impl Sink<Packet> for Writer {
     }
 
     fn poll_flush(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
-        self.project()
-            .inner
-            .poll_flush(cx)
-            .map_err(CrocError::from)
+        self.project().inner.poll_flush(cx).map_err(CrocError::from)
     }
 
     fn poll_close(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
-        self.project()
-            .inner
-            .poll_close(cx)
-            .map_err(CrocError::from)
+        self.project().inner.poll_close(cx).map_err(CrocError::from)
     }
 }
 

@@ -1,4 +1,5 @@
-use bincode::{Decode, Encode};
+use bincode::Decode;
+use bincode::Encode;
 
 /// Message is the possible payload for messaging
 #[derive(Debug, Encode, Decode)]

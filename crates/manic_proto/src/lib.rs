@@ -19,11 +19,11 @@ pub use codec::{Codec, Reader, Writer};
 pub use bincode;
 
 use bincode::{Decode, Encode};
-pub use codec::{Codec, Reader, Writer};
 pub use error::CrocError;
-pub use error::{CodecError, Result};
+pub use error::Result;
 
 pub use zeroize::Zeroize;
+
 #[derive(Debug, Deserialize, Serialize, Encode, Decode)]
 pub struct Packet {
     magic: [u8; 5],

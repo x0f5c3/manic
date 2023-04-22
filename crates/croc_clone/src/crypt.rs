@@ -1,10 +1,8 @@
 use crate::{CrocError, Result};
 use argon2::password_hash::SaltString;
 use argon2::{Argon2, PasswordHasher};
-use chacha20poly1305::aead::NewAead;
 use chacha20poly1305::{aead::Aead, Key, XChaCha20Poly1305};
-use common::chacha20poly1305::aead::generic_array::sequence::GenericSequence;
-use common::chacha20poly1305::XNonce;
+use common::chacha20poly1305::{KeyInit, XNonce};
 use common::rand_core::{CryptoRng, OsRng, RngCore};
 use common::{argon2, chacha20poly1305};
 
