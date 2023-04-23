@@ -1,5 +1,7 @@
+mod bytes;
 mod error;
 mod identity;
+mod signature;
 
 use crate::typenum::U12;
 use aead::Aead;
@@ -11,7 +13,7 @@ use chacha20poly1305::{Key as ChaChaKey, KeyInit, XChaCha20Poly1305, XNonce};
 pub use crypto::{
     aead, cipher,
     common::{self, generic_array, rand_core, typenum},
-    digest, elliptic_curve, password_hash, signature, universal_hash,
+    digest, password_hash, signature, universal_hash,
 };
 pub use error::CryptoError;
 pub(crate) use error::Result;

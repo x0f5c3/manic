@@ -12,20 +12,28 @@ zeroize = { version = "1.6.0", features = ["alloc"] }
 argon2 = "0.5.0"
 bincode = "2.0.0-rc.3"
 
+[dependencies.crypto-common]
+version = "0.2.0-pre"
+features = ["std", "getrandom"]
+
 [dependencies.serde]
 version = "1.0.160"
 default-features = false
 features = ["derive"]
 
 
-[dependencies.crypto]
-version = "0.5.0"
-features = ["std", "digest", "rand_core", "aead", "signature", "cipher", "password-hash", "elliptic-curve", "getrandom", "universal-hash"]
+[dependencies.generic-array]
+version = "0.14.7"
+features = ["more_lengths", "serde", "zeroize"]
 
+
+[dependencies.ed25519-dalek]
+version = "2.0.0-rc.2"
+features = ["batch", "pem", "serde", "merlin", "asm", "pkcs8"]
 
 [dependencies.rand_core]
 version = "0.6.4"
-features = ["std", "serde1"]
+features = ["std", "serde1", "getrandom"]
 
 [dependencies.spake2]
 version = "0.3.1"
@@ -39,9 +47,9 @@ features = ["stream"]
 version = "0.10.1"
 features = ["std", "stream"]
 
-[dependencies.opaque-ke]
-version = "3.0.0-pre.2"
-features = ["argon2", "curve25519", "std"]
+#[dependencies.opaque-ke]
+#version = "3.0.0-pre.2"
+#features = ["argon2", "curve25519", "std"]
 
 [dependencies.password-hash]
 version = "0.5.0"

@@ -1,3 +1,5 @@
+mod array;
+
 pub use argon2::password_hash;
 pub use buildstructor;
 pub use password_hash::rand_core;

@@ -6,8 +6,6 @@ pub(crate) type Result<T> = std::result::Result<T, CryptoError>;
 pub enum CryptoError {
     #[error(transparent)]
     IOErr(#[from] std::io::Error),
-    #[error("Opaque error: {0}")]
-    OpaqueKe(#[from] opaque_ke::errors::ProtocolError),
     #[error("PWHash: {0}")]
     PWHash(#[from] password_hash::Error),
     #[error(transparent)]
@@ -16,4 +14,10 @@ pub enum CryptoError {
     NOSalt,
     #[error(transparent)]
     ChaCha(#[from] chacha20poly1305::Error),
+    #[error("Wanted a 64 byte signature, got {0} bytes")]
+    InvalidLen(usize),
+    #[error("Decode error: {0}")]
+    BincodeDecode(#[from] bincode::error::DecodeError),
+    #[error("Encode error: {0}")]
+    BincodeEncode(#[from] bincode::error::EncodeError),
 }
