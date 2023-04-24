@@ -14,10 +14,14 @@ pub enum CryptoError {
     NOSalt,
     #[error(transparent)]
     ChaCha(#[from] chacha20poly1305::Error),
-    #[error("Wanted a 64 byte signature, got {0} bytes")]
-    InvalidLen(usize),
+    #[error("Wanted a {0} bytes, got {1} bytes")]
+    InvalidLen(usize, usize),
     #[error("Decode error: {0}")]
     BincodeDecode(#[from] bincode::error::DecodeError),
     #[error("Encode error: {0}")]
     BincodeEncode(#[from] bincode::error::EncodeError),
+    #[error("Cannot sign or hash encrypted bytes")]
+    Encrypted,
+    #[error("Signature error: {0}")]
+    SignatureError(#[from] signature::Error),
 }

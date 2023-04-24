@@ -1,6 +1,13 @@
 use chacha20poly1305::aead::{Aead, AeadCore, AeadInPlace};
-use chacha20poly1305::XNonce;
-use ed25519_dalek::{SecretKey, SigningKey, VerifyingKey};
+
+use ed25519_dalek::{SecretKey, SigningKey, VerifyingKey, Digest};
+use sha2::Sha512;
+
+
+use signature::Signer;
+use crate::bytes::Bytes;
+use crate::CryptoError;
+use crate::Result;
 
 const SIGCTX: &[u8] = b"maniccryptoed25519sign";
 
@@ -25,16 +32,27 @@ impl From<ed25519_dalek::Signature> for Signature {
     }
 }
 
-pub struct EncryptedBytes {
-    payload: Vec<u8>,
-    nonce: XNonce,
-}
-
-pub enum Payload {
-    Decrypted(Vec<u8>),
-}
-
 pub struct Message {
-    payload: Vec<u8>,
-    signature: [u8; 64],
+    payload: Bytes,
+    signature: Option<[u8; 64]>,
+}
+
+impl Message {
+    pub fn sign(&mut self, key: SigningKey) -> Result<()> {
+        if self.signature.is_some() {
+            return Ok(());
+        }
+        match &self.payload {
+            Bytes::Decrypted(buf) => {
+                let mut h = Sha512::default();
+                h.update(buf.as_slice());
+                let sig = key.sign_prehashed(h, Some(SIGCTX))?.to_bytes();
+                self.signature = Some(sig);
+                Ok(())
+            }
+            _ => {
+                Err(CryptoError::Encrypted)
+            }
+        }
+    }
 }
