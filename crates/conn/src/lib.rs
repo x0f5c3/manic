@@ -58,7 +58,7 @@ impl StdConn {
     async fn init_curve(mut self, shared: String) -> Result<Conn> {
         let (s, key) = spake2::Spake2::<Ed25519Group>::start_symmetric(
             &Password::new(&shared[5..]),
-            &Identity::new((&shared[1..5]).as_ref()),
+            &Identity::new(shared[1..5].as_ref()),
         );
         let bbytes = self.read().await?;
         let strong_key = s.finish(&bbytes)?;

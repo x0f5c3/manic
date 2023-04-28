@@ -26,7 +26,18 @@ pub type SignatureBytes = [u8; Signature::BYTE_SIZE];
 ///
 /// Signature verification libraries are expected to reject invalid field
 /// elements at the time a signature is verified.
-#[derive(Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash)]
+#[derive(
+    Copy,
+    Clone,
+    Eq,
+    PartialEq,
+    Ord,
+    PartialOrd,
+    Hash,
+    rkyv::Archive,
+    rkyv::Serialize,
+    rkyv::Deserialize,
+)]
 #[repr(C)]
 pub struct Signature {
     r: ComponentBytes,
