@@ -10,9 +10,42 @@ thiserror = "1.0.40"
 chacha20poly1305 = "0.10.1"
 zeroize = { version = "1.6.0", features = ["alloc"] }
 argon2 = "0.5.0"
-bincode = "2.0.0-rc.3"
 sha2 = "0.10.6"
 signature = ">=2.0, <2.1"
+hashbrown = "0.13.2"
+hex-literal = "0.4.1"
+tokio-serde = "0.8.0"
+tokio-util = { version = "0.7.1", features = ["codec", "net", "compat", "full"] }
+bytes = "1.1.0"
+pin-project-lite = "0.2.9"
+time = { version = "0.3.9", features = ["serde-human-readable", "serde-well-known", "serde"] }
+crc = "3.0.1"
+futures = "0.3.28"
+rmp-serde = "1.1.1"
+tracing = "0.1.38"
+
+[dependencies.tokio]
+version = "1.28.0"
+features = ["full"]
+
+[dependencies.rkyv]
+features = ["archive_le", "indexmap", "rend", "tinyvec", "uuid", "tinyvec_alloc", "uuid_std"]
+version = "0.7.41"
+
+
+[dependencies.serde_bytes]
+version = "0.11.9"
+features = ["alloc"]
+
+
+[dependencies.flate2]
+version = "1.0.25"
+
+[dependencies.bincode]
+version = "2.0.0-rc.3"
+git = "https://github.com/x0f5c3/bincode"
+branch = "trunk"
+features = ["generic-array", "std"]
 
 [dependencies.crypto-common]
 version = "0.2.0-pre"
@@ -31,7 +64,7 @@ features = ["more_lengths", "serde", "zeroize"]
 
 [dependencies.ed25519-dalek]
 version = "2.0.0-rc.2"
-features = ["batch", "pem", "serde", "digest", "merlin", "asm", "pkcs8"]
+features = ["batch", "pem", "serde", "digest", "merlin", "asm", "pkcs8", "zeroize"]
 
 [dependencies.rand_core]
 version = "0.6.4"

@@ -12,37 +12,37 @@ use rand_chacha::ChaCha20Rng;
 use std::pin::Pin;
 use std::task::{Context, Poll};
 use tokio::net::tcp::{OwnedReadHalf, OwnedWriteHalf};
-use tokio_serde::{Deserializer, Serializer};
+use tokio_serde::{Deserializer, Framed, Serializer};
 use tokio_util::codec::length_delimited::LengthDelimitedCodec;
 use tokio_util::codec::{FramedRead, FramedWrite};
 use zeroize::Zeroize;
 
 #[derive(Clone)]
-pub struct Codec {
+pub struct BincodeCodec {
     key: Vec<u8>,
     cha: XChaCha20Poly1305,
 }
 
-impl Zeroize for Codec {
+impl Zeroize for BincodeCodec {
     fn zeroize(&mut self) {
         self.key.zeroize()
     }
 }
 
-impl Drop for Codec {
+impl Drop for BincodeCodec {
     fn drop(&mut self) {
         self.key.zeroize();
     }
 }
 
-impl Codec {
+impl BincodeCodec {
     pub fn new(key: Vec<u8>) -> Self {
         let cha = XChaCha20Poly1305::new_from_slice(key.as_slice()).unwrap();
         Self { cha, key }
     }
 }
 
-impl Serializer<Packet> for Codec {
+impl Serializer<Packet> for BincodeCodec {
     type Error = CrocError;
 
     fn serialize(self: Pin<&mut Self>, item: &Packet) -> Result<Bytes, Self::Error> {
@@ -53,7 +53,7 @@ impl Serializer<Packet> for Codec {
         debug!("To serialize: {:?}", item);
         let mut writer = Vec::new();
         let mut parz = flate2::write::DeflateEncoder::new(&mut writer, Compression::best());
-        bincode::encode_into_std_write(&item, &mut parz, bincode::config::standard())?;
+        bincode::encode_into_std_write(item, &mut parz, bincode::config::standard())?;
         let finished = parz.finish()?;
         debug!("Serialized: {:?}", finished);
         res.append(&mut self.cha.encrypt(&nonce, finished.as_slice())?.to_vec());
@@ -62,7 +62,7 @@ impl Serializer<Packet> for Codec {
     }
 }
 
-impl Deserializer<Packet> for Codec {
+impl Deserializer<Packet> for BincodeCodec {
     type Error = CrocError;
 
     fn deserialize(self: Pin<&mut Self>, src: &BytesMut) -> Result<Packet, Self::Error> {
@@ -87,7 +87,7 @@ pin_project! {
         #[pin]
         inner: FramedWrite<OwnedWriteHalf, LengthDelimitedCodec>,
         #[pin]
-        codec: Codec,
+        codec: BincodeCodec,
     }
 }
 
@@ -96,7 +96,7 @@ pub struct Reader {
     #[pin]
     inner: FramedRead<OwnedReadHalf, LengthDelimitedCodec>,
     #[pin]
-    codec: Codec,
+    codec: BincodeCodec,
 }
     }
 
@@ -111,7 +111,7 @@ impl Writer {
     pub fn new(conn: OwnedWriteHalf, key: Option<Vec<u8>>) -> Self {
         let len_delim = FramedWrite::new(conn, LengthDelimitedCodec::new());
 
-        let codec = Codec::new(key.unwrap_or_else(gen_key));
+        let codec = BincodeCodec::new(key.unwrap_or_else(gen_key));
         Self {
             inner: len_delim,
             codec,
@@ -122,7 +122,7 @@ impl Writer {
 impl Reader {
     pub fn new(conn: OwnedReadHalf, key: Option<Vec<u8>>) -> Self {
         let inner = FramedRead::new(conn, LengthDelimitedCodec::new());
-        let codec = Codec::new(key.unwrap_or_else(gen_key));
+        let codec = BincodeCodec::new(key.unwrap_or_else(gen_key));
 
         Self { inner, codec }
     }

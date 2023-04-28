@@ -1,3 +1,4 @@
+use crate::codecs::MAGIC_BYTES;
 use thiserror::Error;
 
 pub(crate) type Result<T> = std::result::Result<T, CryptoError>;
@@ -24,4 +25,22 @@ pub enum CryptoError {
     Encrypted,
     #[error("Signature error: {0}")]
     SignatureError(#[from] signature::Error),
+    #[error("DEFLATE compress error: {0}")]
+    FlateCompressError(#[from] flate2::CompressError),
+    #[error("DEFLATE decompress error: {0}")]
+    FlateDecompressError(#[from] flate2::DecompressError),
+    #[error("MessagePack decode error: {0}")]
+    MSGPDecodeError(#[from] rmp_serde::decode::Error),
+    #[error("MessagePack encode error: {0}")]
+    MSGPEncodeError(#[from] rmp_serde::encode::Error),
+    #[error("Wrong magic bytes, wanted: {MAGIC_BYTES:?}, gotten: {0:?}")]
+    MagicBytes([u8; 5]),
+    #[error("Encrypted data too short, wanted at least 25, gotten {0}")]
+    TooShort(usize),
+}
+
+impl CryptoError {
+    pub fn invalid_len(wanted: usize, got: usize) -> Self {
+        Self::InvalidLen(wanted, got)
+    }
 }

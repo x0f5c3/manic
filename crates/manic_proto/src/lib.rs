@@ -14,7 +14,7 @@ use serde::{Deserialize, Serialize};
 
 pub use chacha20poly1305;
 
-pub use codec::{Codec, Reader, Writer};
+pub use codec::{BincodeCodec, Reader, Writer};
 
 pub use bincode;
 

@@ -1,40 +1,36 @@
-use chacha20poly1305::aead::{Aead, AeadCore, AeadInPlace};
+use chacha20poly1305::aead::Aead;
+use std::collections::HashMap;
 
-use ed25519_dalek::{SecretKey, SigningKey, VerifyingKey, Digest};
+use ed25519_dalek::{Digest, SecretKey, SigningKey, VerifyingKey};
+
+use crate::signature::Signature;
+
 use sha2::Sha512;
 
-
-use signature::Signer;
 use crate::bytes::Bytes;
 use crate::CryptoError;
 use crate::Result;
 
+use zeroize::{Zeroize, ZeroizeOnDrop};
+
+pub type EDSignature = [u8; 64];
+
 const SIGCTX: &[u8] = b"maniccryptoed25519sign";
 
+#[derive(Debug, Clone, Zeroize, ZeroizeOnDrop)]
 pub struct CryptoContext<A>
 where
-    A: Aead + AeadCore + AeadInPlace,
+    A: Aead + Zeroize + ZeroizeOnDrop,
 {
     aead: A,
-    key: SigningKey,
-}
-
-#[derive(Debug, Copy, Clone)]
-pub struct Signature {
-    inner: [u8; 64],
-}
-
-impl From<ed25519_dalek::Signature> for Signature {
-    fn from(value: ed25519_dalek::Signature) -> Self {
-        Self {
-            inner: value.to_bytes(),
-        }
-    }
+    key: SecretKey,
+    #[zeroize(skip)]
+    clients: HashMap<String, VerifyingKey>,
 }
 
 pub struct Message {
     payload: Bytes,
-    signature: Option<[u8; 64]>,
+    signature: Option<Signature>,
 }
 
 impl Message {
@@ -46,13 +42,11 @@ impl Message {
             Bytes::Decrypted(buf) => {
                 let mut h = Sha512::default();
                 h.update(buf.as_slice());
-                let sig = key.sign_prehashed(h, Some(SIGCTX))?.to_bytes();
-                self.signature = Some(sig);
+                let sig = key.sign_prehashed(h, Some(SIGCTX))?;
+                self.signature = Some(Signature::from(sig.to_bytes()));
                 Ok(())
             }
-            _ => {
-                Err(CryptoError::Encrypted)
-            }
+            _ => Err(CryptoError::Encrypted),
         }
     }
 }

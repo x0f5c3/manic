@@ -1,9 +1,12 @@
 use crate::{CryptoError, Result};
-use bincode::{Decode, Encode};
-use ed25519_dalek::ed25519::signature;
+use bincode::{BorrowDecode, Decode, Encode};
+
+use bincode::de::{BorrowDecoder, Decoder};
+use bincode::enc::Encoder;
+use bincode::error::{DecodeError, EncodeError};
 use ed25519_dalek::ed25519::SignatureEncoding;
+use serde::{de, ser, Deserialize, Serialize};
 use std::fmt;
-use std::str::FromStr;
 
 /// Size of a single component of an Ed25519 signature.
 const COMPONENT_SIZE: usize = 32;
@@ -23,7 +26,7 @@ pub type SignatureBytes = [u8; Signature::BYTE_SIZE];
 ///
 /// Signature verification libraries are expected to reject invalid field
 /// elements at the time a signature is verified.
-#[derive(Copy, Clone, Eq, PartialEq, Encode, Decode)]
+#[derive(Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash)]
 #[repr(C)]
 pub struct Signature {
     r: ComponentBytes,
@@ -47,8 +50,8 @@ impl Signature {
     }
 
     /// Parse an Ed25519 signature from its `r` and `s` components.
-    pub fn from_components(R: ComponentBytes, s: ComponentBytes) -> Self {
-        Self { r: R, s }
+    pub fn from_components(r: ComponentBytes, s: ComponentBytes) -> Self {
+        Self { r, s }
     }
 
     /// Parse an Ed25519 signature from a byte slice.
@@ -58,7 +61,7 @@ impl Signature {
     /// - `Err` if the input byte slice is not 64-bytes
     pub fn from_slice(bytes: &[u8]) -> Result<Self> {
         if bytes.len() != 64 {
-            Err(CryptoError::InvalidLen(bytes.len()))
+            return Err(CryptoError::InvalidLen(64, bytes.len()));
         }
         Self::try_from(bytes)
     }
@@ -76,8 +79,8 @@ impl Signature {
     /// Return the inner byte array.
     pub fn to_bytes(&self) -> SignatureBytes {
         let mut ret = [0u8; Self::BYTE_SIZE];
-        let (R, s) = ret.split_at_mut(COMPONENT_SIZE);
-        R.copy_from_slice(&self.r);
+        let (r, s) = ret.split_at_mut(COMPONENT_SIZE);
+        r.copy_from_slice(&self.r);
         s.copy_from_slice(&self.s);
         ret
     }
@@ -87,13 +90,35 @@ impl Signature {
     }
 
     pub fn from_bincode(buf: &[u8]) -> Result<Self> {
-        let (ret, n): (Self, usize) = bincode::decode_from_slice(buf, bincode::config::standard())?;
+        let (ret, _n): (Self, usize) =
+            bincode::decode_from_slice(buf, bincode::config::standard())?;
         Ok(ret)
     }
     /// Convert this signature into a byte vector.
-    #[cfg(feature = "alloc")]
     pub fn to_vec(&self) -> Vec<u8> {
         self.to_bytes().to_vec()
+    }
+}
+
+impl Encode for Signature {
+    fn encode<E: Encoder>(&self, encoder: &mut E) -> std::result::Result<(), EncodeError> {
+        Encode::encode(&self.to_bytes(), encoder)
+    }
+}
+
+impl Decode for Signature {
+    fn decode<D: Decoder>(decoder: &mut D) -> std::result::Result<Self, DecodeError> {
+        let bytes = <SignatureBytes as Decode>::decode(decoder)?;
+        Ok(Self::from_bytes(&bytes))
+    }
+}
+
+impl<'de> BorrowDecode<'de> for Signature {
+    fn borrow_decode<D: BorrowDecoder<'de>>(
+        decoder: &mut D,
+    ) -> std::result::Result<Self, DecodeError> {
+        let bytes = <SignatureBytes as BorrowDecode>::borrow_decode(decoder)?;
+        Ok(Self::from_bytes(&bytes))
     }
 }
 
@@ -154,7 +179,7 @@ impl fmt::Display for Signature {
 
 impl fmt::LowerHex for Signature {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        for component in [&self.R, &self.s] {
+        for component in [&self.r, &self.s] {
             for byte in component {
                 write!(f, "{:02x}", byte)?;
             }
@@ -165,7 +190,7 @@ impl fmt::LowerHex for Signature {
 
 impl fmt::UpperHex for Signature {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        for component in [&self.R, &self.s] {
+        for component in [&self.r, &self.s] {
             for byte in component {
                 write!(f, "{:02X}", byte)?;
             }
@@ -218,3 +243,124 @@ impl fmt::UpperHex for Signature {
 //         Self::try_from(&result[..])
 //     }
 // }
+
+impl Serialize for Signature {
+    fn serialize<S: ser::Serializer>(&self, serializer: S) -> std::result::Result<S::Ok, S::Error> {
+        use ser::SerializeTuple;
+
+        let mut seq = serializer.serialize_tuple(Signature::BYTE_SIZE)?;
+
+        for byte in self.to_bytes() {
+            seq.serialize_element(&byte)?;
+        }
+
+        seq.end()
+    }
+}
+
+// serde lacks support for deserializing arrays larger than 32-bytes
+// see: <https://github.com/serde-rs/serde/issues/631>
+impl<'de> Deserialize<'de> for Signature {
+    fn deserialize<D: de::Deserializer<'de>>(
+        deserializer: D,
+    ) -> std::result::Result<Self, D::Error> {
+        struct ByteArrayVisitor;
+
+        impl<'de> de::Visitor<'de> for ByteArrayVisitor {
+            type Value = [u8; Signature::BYTE_SIZE];
+
+            fn expecting(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+                formatter.write_str("bytestring of length 64")
+            }
+
+            fn visit_seq<A>(
+                self,
+                mut seq: A,
+            ) -> std::result::Result<[u8; Signature::BYTE_SIZE], A::Error>
+            where
+                A: de::SeqAccess<'de>,
+            {
+                use de::Error;
+                let mut arr = [0u8; Signature::BYTE_SIZE];
+
+                for (i, byte) in arr.iter_mut().enumerate() {
+                    *byte = seq
+                        .next_element()?
+                        .ok_or_else(|| Error::invalid_length(i, &self))?;
+                }
+
+                Ok(arr)
+            }
+        }
+
+        deserializer
+            .deserialize_tuple(Signature::BYTE_SIZE, ByteArrayVisitor)
+            .map(Into::into)
+    }
+}
+
+impl serde_bytes::Serialize for Signature {
+    fn serialize<S>(&self, serializer: S) -> std::result::Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        serializer.serialize_bytes(&self.to_bytes())
+    }
+}
+
+impl<'de> serde_bytes::Deserialize<'de> for Signature {
+    fn deserialize<D>(deserializer: D) -> std::result::Result<Self, D::Error>
+    where
+        D: de::Deserializer<'de>,
+    {
+        struct ByteArrayVisitor;
+
+        impl<'de> de::Visitor<'de> for ByteArrayVisitor {
+            type Value = SignatureBytes;
+
+            fn expecting(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+                formatter.write_str("bytestring of length 64")
+            }
+
+            fn visit_bytes<E>(self, bytes: &[u8]) -> std::result::Result<Self::Value, E>
+            where
+                E: de::Error,
+            {
+                use de::Error;
+
+                bytes
+                    .try_into()
+                    .map_err(|_| Error::invalid_length(bytes.len(), &self))
+            }
+        }
+
+        deserializer
+            .deserialize_bytes(ByteArrayVisitor)
+            .map(Into::into)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::signature::{Signature, SignatureBytes};
+    use bincode::config::standard;
+    use hex_literal::hex;
+
+    const SIGNATURE_BYTES: SignatureBytes = hex!(
+        "
+        e5564300c360ac729086e2cc806e828a
+        84877f1eb8e5d974d873e06522490155
+        5fb8821590a33bacc61e39701cf9b46b
+        d25bf5f0595bbe24655141438e7a100b
+        "
+    );
+
+    #[test]
+    fn round_trip() {
+        let signature = Signature::from_bytes(&SIGNATURE_BYTES);
+        let serialized = bincode::encode_to_vec(&signature, standard()).unwrap();
+        let (deserialized, _n): (Signature, usize) =
+            bincode::decode_from_slice(&serialized, standard()).unwrap();
+        assert_eq!(signature, deserialized);
+    }
+}

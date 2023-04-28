@@ -1,20 +1,21 @@
 mod bytes;
+mod codecs;
 mod error;
+mod file_map;
 mod identity;
 mod signature;
 
-use crate::typenum::U12;
-use aead::Aead;
 use aes_gcm::Key as AesKey;
 use aes_gcm::{Aes256Gcm, Nonce};
-use aes_gcm_siv::Key as SivKey;
+use aes_gcm_siv::{Aes256GcmSiv, Key as SivKey};
 use argon2::Argon2;
+use chacha20poly1305::aead::Aead;
 use chacha20poly1305::{Key as ChaChaKey, KeyInit, XChaCha20Poly1305, XNonce};
-pub use crypto::{
-    aead, cipher,
-    common::{self, generic_array, rand_core, typenum},
-    digest, password_hash, signature, universal_hash,
-};
+// pub use crypto::{
+//     aead, cipher,
+//     common::{self, generic_array, rand_core, typenum},
+//     digest, password_hash, signature, universal_hash,
+// };
 pub use error::CryptoError;
 pub(crate) use error::Result;
 use password_hash::{PasswordHasher, SaltString};
@@ -46,4 +47,11 @@ pub fn encrypt_aes(plain: &[u8], passphrase: &[u8]) -> Result<Vec<u8>> {
     cipher.encrypt(&nonce, plain).map_err(CryptoError::from)
 }
 
-pub fn encrypt_aes_siv(plain: &[u8], passphrase: &[u8]) -> Result<Vec<u8>> {}
+pub fn encrypt_aes_siv(plain: &[u8], passphrase: &[u8]) -> Result<Vec<u8>> {
+    let pw = new_argon2(passphrase)?;
+    let key = SivKey::<Aes256GcmSiv>::from_slice(pw.as_bytes());
+    let cipher = Aes256Gcm::new(key);
+    let mut nonce = Nonce::default();
+    OsRng.fill_bytes(&mut nonce);
+    cipher.encrypt(&nonce, plain).map_err(CryptoError::from)
+}

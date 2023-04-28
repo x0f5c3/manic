@@ -8,6 +8,8 @@ edition = "2021"
 [dependencies]
 thiserror = "1.0.40"
 
+[dependencies.common]
+path = "../common"
 
 [dependencies.socket2]
 version = "0.5.2"

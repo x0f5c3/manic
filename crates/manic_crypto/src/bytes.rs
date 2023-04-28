@@ -1,5 +1,4 @@
-use std::ops::Deref;
-use crate::typenum::U12;
+use crate::signature::Signature;
 use crate::CryptoError;
 use bincode::de::Decoder;
 use bincode::enc::Encoder;
@@ -12,48 +11,8 @@ use generic_array::typenum::U12;
 use generic_array::{ArrayLength, GenericArray};
 use serde::de::Error;
 use serde::{Deserialize, Serialize};
+use std::ops::Deref;
 use zeroize::{Zeroize, ZeroizeOnDrop};
-
-#[derive(Debug, Zeroize, Serialize, Deserialize)]
-pub struct SizedBytesArray<N: ArrayLength<u8> + Drop> {
-    arr: GenericArray<u8, N>,
-}
-
-impl<N: ArrayLength<u8> + Drop> Deref for SizedBytesArray<>
-
-#[derive(Debug, Zeroize, ZeroizeOnDrop, Encode, Decode, Clone, Deserialize, Serialize)]
-pub struct BytesArray {
-    data: Vec<u8>,
-}
-
-impl<N: ArrayLength<u8>> From<GenericArray<u8, N>> for BytesArray {
-    fn from(value: GenericArray<u8, N>) -> Self {
-        let data = value.to_vec();
-        Self { data }
-    }
-}
-
-impl AsRef<[u8]> for BytesArray {
-    fn as_ref(&self) -> &[u8] {
-        self.data.as_slice()
-    }
-}
-
-impl<N: ArrayLength<u8>> TryInto<GenericArray<u8, N>> for BytesArray {
-    type Error = CryptoError;
-    fn try_into(self) -> Result<GenericArray<u8, N>, Self::Error> {
-        if self.data.len() != N::USIZE {
-            return Err(CryptoError::InvalidLen(N::USIZE, self.data.len()));
-        }
-        GenericArray::from_exact_iter(self.data.into_iter())
-            .ok_or(CryptoError::InvalidLen(N::USIZE, self.data.len()))
-    }
-}
-
-pub enum EncryptedBuf {
-    ChaChaX(GenericArray<u8, U24>),
-    ChaCha(GenericArray<u8, U12>),
-}
 
 #[derive(Debug, Zeroize, ZeroizeOnDrop, Encode, Decode, Clone, Deserialize, Serialize)]
 pub struct EncryptedBytes {
@@ -68,14 +27,48 @@ pub enum Bytes {
     Decrypted(Vec<u8>),
 }
 
+impl Bytes {
+    pub fn is_encrypted(&self) -> bool {
+        matches!(self, Self::Encrypted(_))
+    }
+    pub fn to_vec(&self) -> Option<Vec<u8>> {
+        match self {
+            Self::Encrypted(enc) => None,
+            Self::Decrypted(dec) => Some(dec.clone()),
+        }
+    }
+    pub fn to_bincode(&self, with_decrypted: bool) -> Result<Vec<u8>, CryptoError> {
+        match self {
+            Self::Encrypted(enc) => {
+                bincode::encode_to_vec(&enc, bincode::config::standard()).map_err(CryptoError::from)
+            }
+            Self::Decrypted(dec) => {
+                if with_decrypted {
+                    bincode::encode_to_vec(&dec, bincode::config::standard())
+                        .map_err(CryptoError::from)
+                } else {
+                    Err(CryptoError::Encrypted)
+                }
+            }
+        }
+    }
+}
+
 impl Encode for Bytes {
     fn encode<E: Encoder>(&self, encoder: &mut E) -> Result<(), EncodeError> {
         match self {
-            Self::Encrypted(enc) => {
-                bincode::Encode::encode(&enc.nonce, encoder)?;
-                bincode::Encode::encode(&enc.payload, encoder)
-            }
+            Self::Encrypted(enc) => Encode::encode(enc, encoder),
             _ => Err(EncodeError::Other("Cannot encode unencrypted bytes")),
         }
     }
+}
+
+pub const MAGIC_BYTES: &[u8; 5] = b"manic";
+
+#[derive(Debug, Deserialize, Serialize, Encode, Decode)]
+pub struct Packet {
+    magic: [u8; 5],
+    // header: u32,
+    data: Bytes,
+    signature: Option<Signature>,
 }
