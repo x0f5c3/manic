@@ -1,49 +1,99 @@
 use crate::signature::Signature;
+use crate::{codecs, CryptoError};
+use aead::stream::NonceSize;
+use aead::{Aead, AeadCore, AeadMut, Nonce};
+use aes_gcm::Aes256Gcm;
+use aes_gcm_siv::Aes256GcmSiv;
 use bincode::{Decode, Encode};
-use bytes::BytesMut;
-use chacha20poly1305::aead::Aead;
+use buildstructor::buildstructor;
+use bytes::{Bytes, BytesMut};
 use chacha20poly1305::{XChaCha20Poly1305, XNonce};
+use generic_array::ArrayLength;
+use pin_project_lite::pin_project;
 use rand_core::{OsRng, RngCore};
 use rkyv::with::UnixTimestamp;
 use rkyv::{Archive, Deserialize as RkyvDeserialize, Serialize as RkyvSerialize};
 use serde::{Deserialize, Serialize};
+use std::ops::DerefMut;
 use std::pin::Pin;
+use std::sync::Arc;
 use tokio_serde::{Deserializer, Serializer};
+use zeroize::{Zeroize, ZeroizeOnDrop};
 
 mod bincode_codec;
 mod messagepack;
 
-/// Marker trait for unencrypted codecs to wrap in the Messager struct
-pub trait PlainText {}
+pub struct Crypter {
+    key: Vec<u8>,
+    crypt: CryptoType,
+}
 
-pub(crate) fn new_nonce(rng: &mut OsRng) -> XNonce {
-    let mut nonce = XNonce::default();
+pub enum CryptoType {
+    ChaCha20Poly1305(Arc<XChaCha20Poly1305>),
+    Aes256Gcm(Arc<Aes256Gcm>),
+    Aes256GcmSiv(Arc<Aes256GcmSiv>),
+}
+
+/// Marker trait for unencrypted codecs to wrap in the Messager struct
+pub trait PlainText: Deserializer<Packet> + Serializer<Packet> {}
+
+pub(crate) fn new_nonce<A: AeadCore>(rng: &mut OsRng) -> Nonce<A> {
+    let mut nonce = Nonce::<A>::default();
     rng.fill_bytes(&mut nonce);
     nonce
 }
-
-pub struct Messager<C: Deserializer<Packet> + Serializer<Packet>> {
+pin_project! {
+pub struct Messager<C, A: AeadCore> {
+        #[pin]
     codec: C,
-    crypt: XChaCha20Poly1305,
+        #[pin]
+    crypt: A,
+    nonce: Nonce<A>,
 }
+    }
 
-impl<C> Deserializer<Packet> for Messager<C>
+impl<C, A> Deserializer<Packet> for Messager<C, A>
 where
-    C: Deserializer<Packet> + Serializer<Packet> + Unpin,
-    <C as Deserializer<Packet>>::Error: From<chacha20poly1305::Error>,
+    C: Deserializer<Packet> + Serializer<Packet> + DerefMut,
+    <C as Deserializer<Packet>>::Error: Into<CryptoError>,
+    A: Aead + AeadCore,
+    CryptoError: From<<C as Deserializer<Packet>>::Error>,
 {
-    type Error = <C as Deserializer<Packet>>::Error;
+    type Error = CryptoError;
 
     fn deserialize(self: Pin<&mut Self>, src: &BytesMut) -> Result<Packet, Self::Error> {
-        let codec = Pin::new(&mut self.codec);
-        let packet = codec.deserialize(src)?;
+        let this = self.project();
+        let mut c = this.codec;
+        let packet = c.as_mut().deserialize(src)?;
         if let MessagePayload::Encrypted(enc) = packet.data {
-            let nonce = XNonce::from_slice(&enc[..24]);
-            let dec = self.crypt.decrypt(nonce, &enc[24..])?;
-            let res = codec.deserialize(&BytesMut::from(dec.as_slice()))?;
+            let nonce = Nonce::<A>::from_slice(&enc[..24]);
+            let dec = this.crypt.decrypt(nonce, &enc[24..])?;
+            let res = c.deserialize(&BytesMut::from(dec.as_slice()))?;
             Ok(res)
         } else {
             Ok(packet)
+        }
+    }
+}
+
+impl<C, A> Serializer<Packet> for Messager<C, A>
+where
+    C: Deserializer<Packet> + Serializer<Packet> + DerefMut,
+    A: Aead + AeadCore,
+    CryptoError: From<<C as Deserializer<Packet>>::Error>,
+{
+    type Error = CryptoError;
+    fn serialize(self: Pin<&mut Self>, item: &Packet) -> Result<Bytes, Self::Error> {
+        let this = self.project();
+        let mut c = this.codec;
+        if let MessagePayload::Decrypted(d) = &item.data {
+            let inner = c.serialize(d)?;
+            let mut enc = this.crypt.encrypt(this.nonce)?;
+            let mut nonce = this.nonce.to_vec();
+            nonce.append(&mut enc);
+            Ok(Bytes::from(nonce))
+        } else {
+            c.serialize(item)
         }
     }
 }

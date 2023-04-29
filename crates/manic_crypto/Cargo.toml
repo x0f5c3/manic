@@ -21,8 +21,15 @@ pin-project-lite = "0.2.9"
 time = { version = "0.3.9", features = ["serde-human-readable", "serde-well-known", "serde"] }
 crc = "3.0.1"
 futures = "0.3.28"
+buildstructor = "0.5.2"
 rmp-serde = "1.1.1"
-tracing = "0.1.38"
+aead = "0.5.2"
+tracing = "0.1.37"
+
+
+[dependencies.deoxys]
+version = "0.1.0"
+features = ["std", "stream"]
 
 [dependencies.tokio]
 version = "1.28.0"
