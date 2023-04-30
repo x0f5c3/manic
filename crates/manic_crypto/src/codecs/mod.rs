@@ -1,37 +1,35 @@
 use crate::signature::Signature;
 use crate::{codecs, CryptoError};
 use aead::stream::NonceSize;
-use aead::{Aead, AeadCore, AeadMut, Nonce};
+use aead::{Aead, AeadCore, AeadInPlace, AeadMut, Key, KeyInit, KeySizeUser, Nonce};
+use aes_gcm::aes::cipher::InvalidLength;
 use aes_gcm::Aes256Gcm;
 use aes_gcm_siv::Aes256GcmSiv;
 use bincode::{Decode, Encode};
 use buildstructor::buildstructor;
 use bytes::{Bytes, BytesMut};
 use chacha20poly1305::{XChaCha20Poly1305, XNonce};
+use generic_array::typenum::Unsigned;
 use generic_array::ArrayLength;
-use pin_project_lite::pin_project;
-use rand_core::{OsRng, RngCore};
+use pin_project::pin_project;
+use rand_core::{CryptoRng, OsRng, RngCore};
 use rkyv::with::UnixTimestamp;
 use rkyv::{Archive, Deserialize as RkyvDeserialize, Serialize as RkyvSerialize};
 use serde::{Deserialize, Serialize};
 use std::ops::DerefMut;
 use std::pin::Pin;
 use std::sync::Arc;
+use tokio::io::{AsyncRead, AsyncWrite};
 use tokio_serde::{Deserializer, Serializer};
 use zeroize::{Zeroize, ZeroizeOnDrop};
 
 mod bincode_codec;
 mod messagepack;
 
-pub struct Crypter {
-    key: Vec<u8>,
-    crypt: CryptoType,
-}
-
 pub enum CryptoType {
-    ChaCha20Poly1305(Arc<XChaCha20Poly1305>),
-    Aes256Gcm(Arc<Aes256Gcm>),
-    Aes256GcmSiv(Arc<Aes256GcmSiv>),
+    ChaCha20Poly1305,
+    Aes256Gcm,
+    Aes256GcmSiv,
 }
 
 /// Marker trait for unencrypted codecs to wrap in the Messager struct
@@ -42,20 +40,59 @@ pub(crate) fn new_nonce<A: AeadCore>(rng: &mut OsRng) -> Nonce<A> {
     rng.fill_bytes(&mut nonce);
     nonce
 }
-pin_project! {
-pub struct Messager<C, A: AeadCore> {
-        #[pin]
+
+pub struct Messager<C, A, W>
+where
+    C: Deserializer<Packet> + Serializer<Packet>,
+    A: Aead + AeadCore,
+    W: AsyncWrite + AsyncRead,
+{
     codec: C,
-        #[pin]
     crypt: A,
-    nonce: Nonce<A>,
+    writer: W,
 }
+
+#[pin_project]
+pub struct Crypter<C, A: AeadCore> {
+    #[pin]
+    codec: C,
+    #[pin]
+    crypt: A,
+}
+
+impl<C, A: KeySizeUser> KeySizeUser for Crypter<C, A> {
+    type KeySize = A::KeySize;
+
+    fn key_size() -> usize {
+        A::KeySize::to_usize()
+    }
+}
+
+impl<C, A: KeyInit> KeyInit for Crypter<C, A> {
+    fn new(key: &Key<Self>) -> Self {}
+
+    fn new_from_slice(key: &[u8]) -> Result<Self, InvalidLength> {
+        todo!()
     }
 
-impl<C, A> Deserializer<Packet> for Messager<C, A>
+    fn generate_key(rng: impl CryptoRng + RngCore) -> Key<Self> {
+        todo!()
+    }
+}
+
+impl<C, A> Crypter<C, A>
+where
+    C: Deserializer<Packet> + Serializer<Packet>,
+    A: Aead + AeadCore + KeyInit,
+{
+    pub fn new(codec: C, crypt: A) -> Self {
+        Self { codec, crypt }
+    }
+}
+
+impl<C, A> Deserializer<Packet> for Crypter<C, A>
 where
     C: Deserializer<Packet> + Serializer<Packet> + DerefMut,
-    <C as Deserializer<Packet>>::Error: Into<CryptoError>,
     A: Aead + AeadCore,
     CryptoError: From<<C as Deserializer<Packet>>::Error>,
 {
@@ -64,37 +101,30 @@ where
     fn deserialize(self: Pin<&mut Self>, src: &BytesMut) -> Result<Packet, Self::Error> {
         let this = self.project();
         let mut c = this.codec;
-        let packet = c.as_mut().deserialize(src)?;
-        if let MessagePayload::Encrypted(enc) = packet.data {
-            let nonce = Nonce::<A>::from_slice(&enc[..24]);
-            let dec = this.crypt.decrypt(nonce, &enc[24..])?;
-            let res = c.deserialize(&BytesMut::from(dec.as_slice()))?;
-            Ok(res)
-        } else {
-            Ok(packet)
-        }
+        let nonce = Nonce::<A>::from_slice(&src[..24]);
+        let dec = this.crypt.decrypt(nonce, &src[24..])?;
+        let dec = BytesMut::from(dec.as_slice());
+        c.deserialize(&dec).map_err(|e| e.into())
     }
 }
 
-impl<C, A> Serializer<Packet> for Messager<C, A>
+impl<C, A> Serializer<Packet> for Crypter<C, A>
 where
-    C: Deserializer<Packet> + Serializer<Packet> + DerefMut,
-    A: Aead + AeadCore,
-    CryptoError: From<<C as Deserializer<Packet>>::Error>,
+    C: Serializer<Packet> + DerefMut,
+    A: Aead + AeadCore + AeadInPlace,
+    Result<Bytes, CryptoError>: From<Result<Bytes, <C as Serializer<Packet>>::Error>>,
+    CryptoError: From<<C as Serializer<Packet>>::Error>,
 {
     type Error = CryptoError;
     fn serialize(self: Pin<&mut Self>, item: &Packet) -> Result<Bytes, Self::Error> {
         let this = self.project();
         let mut c = this.codec;
-        if let MessagePayload::Decrypted(d) = &item.data {
-            let inner = c.serialize(d)?;
-            let mut enc = this.crypt.encrypt(this.nonce)?;
-            let mut nonce = this.nonce.to_vec();
-            nonce.append(&mut enc);
-            Ok(Bytes::from(nonce))
-        } else {
-            c.serialize(item)
-        }
+        let mut enc = c.serialize(item)?;
+        let nonce = new_nonce::<A>(&mut OsRng);
+        let mut enc_bytes = this.crypt.encrypt(&nonce, enc.as_ref())?;
+        let mut res = nonce.to_vec();
+        res.append(&mut enc_bytes);
+        Ok(res.into())
     }
 }
 
@@ -103,7 +133,7 @@ pub const MAGIC_BYTES: &[u8; 5] = b"manic";
 pub struct Packet {
     magic: [u8; 5],
     // header: u32,
-    data: MessagePayload,
+    data: MessageType,
     signature: Option<Signature>,
 }
 

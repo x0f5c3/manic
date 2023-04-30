@@ -4,6 +4,7 @@ mod error;
 mod file_map;
 mod identity;
 mod signature;
+mod transport;
 
 use aes_gcm::Key as AesKey;
 use aes_gcm::{Aes256Gcm, Nonce};

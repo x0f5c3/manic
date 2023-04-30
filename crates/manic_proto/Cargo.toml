@@ -31,8 +31,3 @@ spake2 = "*"
 [dependencies.flate2]
 version = "1.0.24"
 
-[[example]]
-name = "server"
-
-[[example]]
-name = "client"
