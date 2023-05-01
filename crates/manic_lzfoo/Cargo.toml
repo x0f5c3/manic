@@ -1,0 +1,24 @@
+[package]
+name = "manic_lzfoo"
+version = "0.1.0"
+authors = ["Vin Singh Ghataore <theshampoofactory@gmail.com>"]
+description = """
+A pure Rust LZFSE command line tool.
+"""
+license = "MIT OR Apache-2.0"
+documentation = "https://docs.rs/lzfoo"
+homepage = "https://github.com/shampoofactory/manic_lzfse/tree/main/lzfoo"
+repository = "https://github.com/shampoofactory/manic_lzfse/tree/main/lzfoo"
+readme = "README.md"
+keywords = ["lzfse", "compress", "compression", "decompress", "decompression", "cli"]
+edition = "2018"
+
+[[bin]]
+name = "manic_lzfoo"
+path = "src/main.rs"
+
+[dependencies]
+manic_lzfse = { path = "../manic_lzfse", version = "0.1.0" }
+
+[dependencies.clap]
+workspace = true

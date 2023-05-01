@@ -2,14 +2,14 @@ extern crate udt;
 
 pub mod crypto;
 
-use byteorder::{ReadBytesExt, WriteBytesExt, LittleEndian};
+use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
 use core::ops::DerefMut;
 use std::fmt;
 use std::io::Cursor;
-use std::net::{UdpSocket, SocketAddr, IpAddr};
+use std::net::{IpAddr, SocketAddr, UdpSocket};
 use std::str;
 use std::sync::{Arc, Mutex};
-use udt::{UdtSocket, UdtError, UdtOpts, SocketType, SocketFamily};
+use udt::{SocketFamily, SocketType, UdtError, UdtOpts, UdtSocket};
 
 // TODO config
 const UDT_BUF_SIZE: i32 = 4096000;
@@ -32,7 +32,7 @@ impl ExactIO for UdtSocket {
     fn send_exact(&self, buf: &[u8]) -> Result<(), UdtError> {
         let mut total: usize = 0;
         while total < buf.len() {
-            total += try!(self.send(&buf[total..])) as usize;
+            total += self.send(&buf[total..])? as usize;
         }
         Ok(())
     }
@@ -41,16 +41,24 @@ impl ExactIO for UdtSocket {
         let mut total: usize = 0;
         while total < len {
             let remaining = len - total;
-            total += try!(self.recv(&mut buf[total..], remaining)) as usize;
+            total += self.recv(&mut buf[total..], remaining)? as usize;
         }
         Ok(())
     }
 }
 
-fn send(sock: &UdtSocket, crypto: &mut crypto::Handler, buf: &mut [u8], len: usize) -> Result<(), UdtError> {
+fn send(
+    sock: &UdtSocket,
+    crypto: &mut crypto::Handler,
+    buf: &mut [u8],
+    len: usize,
+) -> Result<(), UdtError> {
     // FIXME don't unwrap, create an Error struct that can handle everything
     if let Ok(sealed_len) = crypto.seal(buf, len) {
-        assert!(sealed_len <= u32::max_value() as usize, "single chunk must be 32-bit length");
+        assert!(
+            sealed_len <= u32::MAX as usize,
+            "single chunk must be 32-bit length"
+        );
 
         let mut wtr = vec![];
         wtr.write_u32::<LittleEndian>(sealed_len as u32).unwrap();
@@ -66,25 +74,22 @@ fn send(sock: &UdtSocket, crypto: &mut crypto::Handler, buf: &mut [u8], len: usi
 
 fn recv(sock: &UdtSocket, crypto: &mut crypto::Handler, buf: &mut [u8]) -> Result<usize, UdtError> {
     let mut len_buf = vec![0u8; 4];
-    try!(sock.recv_exact(&mut len_buf, 4)); // u32
+    sock.recv_exact(&mut len_buf, 4)?; // u32
     let mut rdr = Cursor::new(len_buf);
     let len = rdr.read_u32::<LittleEndian>().unwrap() as usize;
 
-    try!(sock.recv_exact(buf, len));
-    crypto.open(&mut buf[..len]).map_err(|_| {
-        UdtError {
-            err_code: -1,
-            err_msg: String::from("decryption failure"),
-        }
+    sock.recv_exact(buf, len)?;
+    crypto.open(&mut buf[..len]).map_err(|_| UdtError {
+        err_code: -1,
+        err_msg: String::from("decryption failure"),
     })
 }
 
-#[derive(Copy,Clone)]
+#[derive(Copy, Clone)]
 pub struct PortRange {
     start: u16,
     end: u16,
 }
-
 
 pub struct Server {
     pub ip_addr: IpAddr,
@@ -108,8 +113,8 @@ impl Client {
     pub fn new(addr: SocketAddr, key: &[u8]) -> Client {
         let sock = new_udt_socket();
         Client {
-            addr: addr,
-            sock: sock,
+            addr,
+            sock,
             crypto: crypto::Handler::new(key),
         }
     }
@@ -183,11 +188,9 @@ impl Server {
     }
 
     pub fn accept(&self) -> Result<ServerConnection, UdtError> {
-        self.sock.accept().map(move |(sock, _)| {
-            ServerConnection {
-                crypto: self.crypto.clone(),
-                sock: sock,
-            }
+        self.sock.accept().map(move |(sock, _)| ServerConnection {
+            crypto: self.crypto.clone(),
+            sock,
         })
     }
 }

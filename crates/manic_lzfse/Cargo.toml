@@ -1,0 +1,29 @@
+[package]
+name = "manic_lzfse"
+version = "0.1.0" # remember to update lzfooand READMEs
+authors = ["Vin Singh Ghataore <theshampoofactory@gmail.com>"]
+description = """
+A pure Rust LZFSE library.
+"""
+license = "MIT OR Apache-2.0"
+documentation = "https://docs.rs/manic_lzfse"
+homepage = "https://github.com/shampoofactory/manic_lzfse"
+repository = "https://github.com/shampoofactory/manic_lzfse"
+readme = "README.md"
+keywords = ["lzfse", "compress", "compression", "decompress", "decompression"]
+edition = "2018"
+exclude = ["data/*", "scripts/*"]
+
+
+[lib]
+bench = false
+
+
+[dev-dependencies]
+version-sync = "0.9.2"
+test_kit = { path = "test_kit" }
+criterion = "0.4.0"
+
+[[bench]]
+name = "bench"
+harness = false

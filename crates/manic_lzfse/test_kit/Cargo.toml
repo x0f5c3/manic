@@ -1,0 +1,13 @@
+[package]
+publish = false
+name = "test_kit"
+version = "0.1.0"
+authors = ["Vin Singh Ghataore <theshampoofactory@gmail.com>"]
+description = """
+Testing utility functions for manic_lzfse crate.
+"""
+license = "MIT OR Apache-2.0"
+homepage = "https://github.com/shampoofactory/manic_lzfse"
+repository = "https://github.com/shampoofactory/manic_lzfse"
+readme = "README.md"
+edition = "2018"

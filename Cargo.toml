@@ -23,14 +23,21 @@ manic_proto = { path = "./crates/manic_proto" }
 #hostname = "0.3.1"
 #futures = "0.3.21"
 #spake2 = { version = "0.3.1", features = ["std"] }
-#clap_complete_command = "0.3.4"
-#clap-verbosity-flag = "1.0.0"
-#wild = "2.0.4"
-#
-#
-#[dependencies.clap]
-#version = "3.1.18"
-#features = ["derive", "wrap_help", "unicode", "cargo"]
+clap_complete_command = "0.5.1"
+clap-verbosity-flag = "2.0.1"
+wild = "2.1.0"
+clap = { workspace = true }
+
+
+[workspace.dependencies]
+shadow-rs = "0.21.0"
+
+[workspace.dependencies.tracing]
+version = "0.1.37"
+
+[workspace.dependencies.clap]
+version = "4.2.5"
+features = ["derive", "wrap_help", "unicode", "cargo"]
 #
 #[dependencies.names]
 #version = "0.14.0"
@@ -48,6 +55,8 @@ members = [
 [profile.dev]
 opt-level = 2
 
+[profile.test]
+opt-level = 3
 
 [profile.bench]
 lto = true
