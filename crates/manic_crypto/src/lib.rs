@@ -1,10 +1,16 @@
 mod bytes;
+mod cipher;
 mod codecs;
 mod error;
 mod file_map;
+mod header;
 mod identity;
+mod key;
+mod primitives;
+mod protected;
+mod shoop_handler;
 mod signature;
-mod transport;
+mod stream;
 
 use aes_gcm::Key as AesKey;
 use aes_gcm::{Aes256Gcm, Nonce};

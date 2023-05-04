@@ -31,6 +31,29 @@ clap = { workspace = true }
 
 [workspace.dependencies]
 shadow-rs = "0.21.0"
+clap_complete_command = "0.5.1"
+clap_complete_fig = "4.2.0"
+clap_complete_nushell = "0.1.10"
+clap-verbosity-flag = "2.0.1"
+wild = "2.1.0"
+color-eyre = "0.6.2"
+tracing-error = "0.2.0"
+
+
+[workspace.dependencies.rand]
+version = "0.8.5"
+
+[workspace.dependencies.chacha20poly1305]
+version = "0.10.1"
+features = ["alloc", "std", "stream"]
+
+
+[workspace.dependencies.aead]
+version = "0.5.2"
+features = ["alloc", "std", "getrandom", "stream"]
+
+[workspace.dependencies.byteorder]
+version = "1.4.3"
 
 [workspace.dependencies.tracing]
 version = "0.1.37"
@@ -55,6 +78,9 @@ members = [
 [profile.dev]
 opt-level = 2
 
+[profile.dev.package.backtrace]
+opt-level = 3
+
 [profile.test]
 opt-level = 3
 
@@ -66,3 +92,15 @@ opt-level = 2
 [profile.release]
 lto = true
 panic = 'abort'
+
+[[bin]]
+name = "manic_dc"
+path = "crates/manic_dc/src/main.rs"
+
+[[bin]]
+name = "manic_lzfoo"
+path = "crates/manic_lzfoo/src/main.rs"
+
+[[bin]]
+name = "manic_shoop"
+path = "crates/manic_shoop/src/main.rs"

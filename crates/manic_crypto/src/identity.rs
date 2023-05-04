@@ -2,6 +2,7 @@ use chacha20poly1305::aead::Aead;
 use std::collections::HashMap;
 
 use ed25519_dalek::{Digest, SecretKey, SigningKey, VerifyingKey};
+use x25519_dalek::EphemeralSecret;
 
 use crate::signature::Signature;
 
@@ -12,6 +13,7 @@ use crate::CryptoError;
 use crate::Result;
 
 use zeroize::{Zeroize, ZeroizeOnDrop};
+use crate::error::ContextError;
 
 pub type EDSignature = [u8; 64];
 
@@ -46,7 +48,7 @@ impl Message {
                 self.signature = Some(Signature::from(sig.to_bytes()));
                 Ok(())
             }
-            _ => Err(CryptoError::Encrypted),
+            _ => Err(ContextError::from(CryptoError::Encrypted)),
         }
     }
 }

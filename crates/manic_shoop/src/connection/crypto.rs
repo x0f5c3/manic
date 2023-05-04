@@ -1,8 +1,8 @@
 extern crate ring;
 
-use byteorder::{WriteBytesExt, LittleEndian};
+use byteorder::{LittleEndian, WriteBytesExt};
 use ring::aead;
-use ring::aead::{SealingKey, OpeningKey, Algorithm};
+use ring::aead::{Algorithm, BoundKey, OpeningKey, SealingKey};
 use ring::rand::{SecureRandom, SystemRandom};
 
 const MAX_NONCE: u64 = ::std::u64::MAX;
@@ -51,7 +51,9 @@ impl Nonce {
             Err(())
         } else {
             let mut nonce_bytes = Vec::with_capacity(12);
-            nonce_bytes.write_u64::<LittleEndian>(self.counter).map_err(|_| ())?;
+            nonce_bytes
+                .write_u64::<LittleEndian>(self.counter)
+                .map_err(|_| ())?;
             nonce_bytes.extend_from_slice(&[0u8; 4]);
             self.counter += 1;
 
@@ -90,11 +92,15 @@ impl Handler {
         let nonce_len = ALGORITHM.nonce_len();
         let max_suffix_len = ALGORITHM.tag_len();
 
-        debug_assert!(nonce_len < u8::max_value() as usize,
-                "Uh, why is the nonce size this big?");
+        debug_assert!(
+            nonce_len < u8::MAX as usize,
+            "Uh, why is the nonce size this big?"
+        );
 
-        assert!(len <= buf.len() - max_suffix_len,
-                "Buffer doesn't have enough suffix padding.");
+        assert!(
+            len <= buf.len() - max_suffix_len,
+            "Buffer doesn't have enough suffix padding."
+        );
 
         let nonce = &mut self._working_nonce_buf[..nonce_len];
         let nonce_bytes = self.nonce.next().unwrap();
@@ -102,19 +108,19 @@ impl Handler {
 
         let mut sealed = &mut self._working_seal_buf[..len + max_suffix_len];
         sealed[0..len].copy_from_slice(&buf[..len]);
-        match aead::seal_in_place(&self.key.sealing,
-                                  aead::Nonce::try_assume_unique_for_key(nonce).unwrap(),
-                                  aead::Aad::empty(),
-                                  &mut sealed,
-                                  max_suffix_len) {
+        match aead::seal_in_place(
+            &self.key.sealing,
+            aead::Nonce::try_assume_unique_for_key(nonce).unwrap(),
+            aead::Aad::empty(),
+            &mut sealed,
+            max_suffix_len,
+        ) {
             Ok(seal_len) => {
                 buf[..nonce_len].copy_from_slice(&nonce[..]);
-                buf[nonce_len..nonce_len+seal_len].copy_from_slice(&sealed[..seal_len]);
+                buf[nonce_len..nonce_len + seal_len].copy_from_slice(&sealed[..seal_len]);
                 Ok(nonce_len + seal_len)
             }
-            Err(_) => {
-                Err(())
-            }
+            Err(_) => Err(()),
         }
     }
 
@@ -130,15 +136,22 @@ impl Handler {
         let nonce = &mut self._working_nonce_buf[..nonce_len];
         nonce.copy_from_slice(&buf[..nonce_len]);
 
-        aead::open_in_place(&self.key.opening, aead::Nonce::try_assume_unique_for_key(nonce).unwrap(), aead::Aad::empty(), nonce_len, buf)
-            .map(|buf| buf.len())
-            .map_err(|_| String::from("decrypt failed"))
+        aead::open_in_place(
+            &self.key.opening,
+            aead::Nonce::try_assume_unique_for_key(nonce).unwrap(),
+            aead::Aad::empty(),
+            nonce_len,
+            buf,
+        )
+        .map(|buf| buf.len())
+        .map_err(|_| String::from("decrypt failed"))
     }
 }
 
 // Tests for the crypto module
 #[cfg(test)]
 mod test {
+    use ring::aead::BoundKey;
 
     #[test]
     fn nonce_sanity() {
@@ -162,7 +175,7 @@ mod test {
     #[test]
     fn raw_roundtrip() {
         use ring::aead;
-        use ring::aead::{SealingKey, OpeningKey};
+        use ring::aead::{OpeningKey, SealingKey};
         use ring::rand::{SecureRandom, SystemRandom};
 
         let rng = SystemRandom::new();
@@ -175,12 +188,24 @@ mod test {
         let data = [1u8; 1350];
         let out_suffix_capacity = super::ALGORITHM.tag_len();
         let mut in_out = vec![1u8; data.len() + out_suffix_capacity];
-        aead::seal_in_place(&key, aead::Nonce::try_assume_unique_for_key(&nonce_bytes).unwrap(), aead::Aad::empty(),
-                            &mut in_out, out_suffix_capacity).unwrap();
+        aead::seal_in_place(
+            &key,
+            aead::Nonce::try_assume_unique_for_key(&nonce_bytes).unwrap(),
+            aead::Aad::empty(),
+            &mut in_out,
+            out_suffix_capacity,
+        )
+        .unwrap();
 
         let opening_key = OpeningKey::new(super::ALGORITHM, &key_bytes).unwrap();
-        let buf = aead::open_in_place(&opening_key, aead::Nonce::try_assume_unique_for_key(&nonce_bytes).unwrap(), aead::Aad::empty(),
-                                      0, &mut in_out).unwrap();
+        let buf = aead::open_in_place(
+            &opening_key,
+            aead::Nonce::try_assume_unique_for_key(&nonce_bytes).unwrap(),
+            aead::Aad::empty(),
+            0,
+            &mut in_out,
+        )
+        .unwrap();
 
         assert_eq!(buf.len(), 1350);
         assert_eq!(buf, &data[..]);
@@ -188,8 +213,8 @@ mod test {
 
     #[test]
     fn roundtrip() {
-        use ::rand::{self, Rng};
-        use ::rand::distributions::{Distribution, Uniform};
+        use rand::distributions::{Distribution, Uniform};
+        use rand::{self, Rng};
         // generate some data, seal it, and then make sure it unseals to the same thing
         let mut rng = rand::thread_rng();
 
@@ -206,7 +231,11 @@ mod test {
         let cipher_len = handler.seal(&mut data, data_size).unwrap();
         let decrypted_len = handler.open(&mut data[..cipher_len]).unwrap();
         assert_eq!(decrypted_len, data_size);
-        assert_eq!(orig, &data[..decrypted_len], "original and decrypted don't match!");
+        assert_eq!(
+            orig,
+            &data[..decrypted_len],
+            "original and decrypted don't match!"
+        );
     }
 
     #[test]
@@ -254,15 +283,16 @@ mod test {
 #[cfg(all(feature = "nightly", test))]
 mod bench {
     extern crate test;
+
+    use ring::aead::BoundKey;
+
     const DATA_SIZE: usize = 16384;
 
     #[bench]
     fn bench_nonce_output(b: &mut test::Bencher) {
         let mut nonce = super::Nonce { counter: 0 };
         b.bytes = 12; // kind of
-        b.iter(|| {
-            nonce.next()
-        })
+        b.iter(|| nonce.next())
     }
 
     #[bench]
@@ -284,15 +314,21 @@ mod bench {
         b.bytes = DATA_SIZE as u64;
         b.iter(|| {
             rng.fill(&mut nonce_bytes).unwrap();
-            aead::seal_in_place(&key, aead::Nonce::try_assume_unique_for_key(&nonce_bytes).unwrap(), aead::Aad::empty(), &mut in_out,
-                                out_suffix_capacity).unwrap()
+            aead::seal_in_place(
+                &key,
+                aead::Nonce::try_assume_unique_for_key(&nonce_bytes).unwrap(),
+                aead::Aad::empty(),
+                &mut in_out,
+                out_suffix_capacity,
+            )
+            .unwrap()
         })
     }
 
     #[bench]
     fn bench_raw_open(b: &mut test::Bencher) {
         use ring::aead;
-        use ring::aead::{SealingKey, OpeningKey};
+        use ring::aead::{OpeningKey, SealingKey};
         use ring::rand::{SecureRandom, SystemRandom};
 
         let rng = SystemRandom::new();
@@ -309,10 +345,24 @@ mod bench {
 
         b.bytes = DATA_SIZE as u64;
 
-        let sealed_len = aead::seal_in_place(&key, aead::Nonce::try_assume_unique_for_key(&nonce_bytes).unwrap(), aead::Aad::empty(), &mut in_out,
-                                             out_suffix_capacity).unwrap();
-        b.iter(|| { aead::open_in_place(&opening_key, aead::Nonce::try_assume_unique_for_key(&nonce_bytes).unwrap(), aead::Aad::empty(),
-                                        0, &mut in_out[..sealed_len]).unwrap(); });
+        let sealed_len = aead::seal_in_place(
+            &key,
+            aead::Nonce::try_assume_unique_for_key(&nonce_bytes).unwrap(),
+            aead::Aad::empty(),
+            &mut in_out,
+            out_suffix_capacity,
+        )
+        .unwrap();
+        b.iter(|| {
+            aead::open_in_place(
+                &opening_key,
+                aead::Nonce::try_assume_unique_for_key(&nonce_bytes).unwrap(),
+                aead::Aad::empty(),
+                0,
+                &mut in_out[..sealed_len],
+            )
+            .unwrap();
+        });
     }
 
     #[bench]

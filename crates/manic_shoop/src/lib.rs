@@ -3,43 +3,43 @@
 extern crate log;
 #[macro_use]
 extern crate lazy_static;
+extern crate byteorder;
 extern crate chrono;
+extern crate colored;
 extern crate core;
+extern crate hex;
 extern crate libc;
 extern crate pbr;
-extern crate unix_daemonize;
-extern crate byteorder;
-extern crate udt;
 extern crate ring;
-extern crate colored;
-extern crate hex;
+extern crate udt;
+extern crate unix_daemonize;
 
 // crates needed for unit tests
 #[cfg(test)]
 extern crate rand;
 
 pub mod connection;
-pub mod ssh;
 pub mod file;
 pub mod progress;
+pub mod ssh;
 
-use byteorder::{ReadBytesExt, WriteBytesExt, LittleEndian};
+use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
+use chrono::Utc;
 use colored::*;
 use connection::{PortRange, Transceiver};
-use log::{Record, Level, Metadata};
-use std::net::{SocketAddr, IpAddr};
+use file::ReadMsg;
+use log::{Level, Metadata, Record};
+use progress::Progress;
 use std::fs::File;
 use std::io;
 use std::io::{Cursor, SeekFrom, Write};
+use std::net::{IpAddr, SocketAddr};
 use std::path::{Path, PathBuf};
-use std::{str, env, thread, fmt};
 use std::str::FromStr;
 use std::sync::mpsc;
-use chrono::Utc;
-use std::time::{Instant, Duration};
-use progress::Progress;
+use std::time::{Duration, Instant};
+use std::{env, fmt, str, thread};
 use unix_daemonize::{daemonize_redirect, ChdirMode};
-use file::ReadMsg;
 
 // TODO config
 const INITIAL_ACCEPT_TIMEOUT_SECONDS: u64 = 60;
@@ -117,12 +117,10 @@ impl LogVerbosity {
     fn to_log_level(self, mode: ShoopMode) -> Level {
         match self {
             LogVerbosity::Debug => Level::Debug,
-            LogVerbosity::Normal => {
-                match mode {
-                    ShoopMode::Server => Level::Info,
-                    ShoopMode::Client => Level::Error,
-                }
-            }
+            LogVerbosity::Normal => match mode {
+                ShoopMode::Server => Level::Info,
+                ShoopMode::Client => Level::Error,
+            },
         }
     }
 }
@@ -141,13 +139,9 @@ pub enum ServerErr {
 
 impl fmt::Display for ServerErr {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-         let pretty = match *self {
-            ServerErr::SshEnv => {
-                "SSH_CONNECTION env variable unset but required."
-            }
-            ServerErr::File => {
-                "File doesn't exist, ya dingus."
-            }
+        let pretty = match *self {
+            ServerErr::SshEnv => "SSH_CONNECTION env variable unset but required.",
+            ServerErr::File => "File doesn't exist, ya dingus.",
         };
         write!(f, "{} {}", *self as i32, pretty)
     }
@@ -187,9 +181,7 @@ impl log::Log for ShoopLogger {
             };
 
             let pidinfo = match self.mode {
-                ShoopMode::Server => format!("{} ({}) ",
-                                             Utc::now().to_rfc2822(),
-                                             self.pid),
+                ShoopMode::Server => format!("{} ({}) ", Utc::now().to_rfc2822(), self.pid),
                 ShoopMode::Client => String::new(),
             };
 
@@ -278,12 +270,20 @@ impl fmt::Display for TransferState {
         let target = self.clone();
         let pretty = match target {
             TransferState::Send(l, (rh, rp)) => {
-                format!("Send(Local({}) -> Remote({}:{}))",
-                l.display(), rh, rp.display())
+                format!(
+                    "Send(Local({}) -> Remote({}:{}))",
+                    l.display(),
+                    rh,
+                    rp.display()
+                )
             }
             TransferState::Receive((rh, rp), l) => {
-                format!("Receive(Remote({}:{}) -> Local({}))",
-                rh, rp.display(), l.display())
+                format!(
+                    "Receive(Remote({}:{}) -> Local({}))",
+                    rh,
+                    rp.display(),
+                    l.display()
+                )
             }
         };
         write!(f, "{}", pretty)
@@ -292,7 +292,7 @@ impl fmt::Display for TransferState {
 
 impl Server {
     fn daemonize() {
-        let stdout = Some(Path::new(&env::var("HOME").unwrap()).join(".shoop.log"));
+        let stdout = Some(Path::new(&env::var("HOME").unwrap()).join(".manic_shoop.log"));
         let stderr = stdout.clone();
         daemonize_redirect(stdout, stderr, ChdirMode::ChdirRoot).unwrap();
     }
@@ -300,8 +300,11 @@ impl Server {
     // TODO super basic
     fn expand_filename(s: &str) -> String {
         if s.starts_with("~/") {
-            Path::new(&env::var("HOME").unwrap()).join(&s[2..])
-                .to_str().unwrap().into()
+            Path::new(&env::var("HOME").unwrap())
+                .join(&s[2..])
+                .to_str()
+                .unwrap()
+                .into()
         } else {
             s.into()
         }
@@ -329,10 +332,16 @@ impl Server {
                 let ip = sshconn[2].to_owned();
                 let keybytes = connection::crypto::gen_key();
                 let port = connection::Server::get_open_port(&port_range).unwrap();
-                println!("shoop 0 {} {} {}", ip, port, hex::encode(&keybytes));
+                println!("manic_shoop 0 {} {} {}", ip, port, hex::encode(&keybytes));
                 Self::daemonize();
-                info!("got request: serve \"{}\" on range {}", filename, port_range);
-                info!("sent response: shoop 0 {} {} <key redacted>", ip, port);
+                info!(
+                    "got request: serve \"{}\" on range {}",
+                    filename, port_range
+                );
+                info!(
+                    "sent response: manic_shoop 0 {} {} <key redacted>",
+                    ip, port
+                );
                 let conn = connection::Server::new(IpAddr::from_str(&ip).unwrap(), port, &keybytes);
                 Ok(Server {
                     ip: ip,
@@ -343,7 +352,10 @@ impl Server {
             Some(e) => {
                 println!("shooperr {}", e);
                 Self::daemonize();
-                info!("got request: serve \"{}\" on range {}", filename, port_range);
+                info!(
+                    "got request: serve \"{}\" on range {}",
+                    filename, port_range
+                );
                 error!("init error: {}", e);
                 Err(e)
             }
@@ -359,16 +371,13 @@ impl Server {
             let (tx, rx) = mpsc::channel();
             thread::spawn(move || {
                 let (timeout, err) = if connection_count == 0 {
-                    (INITIAL_ACCEPT_TIMEOUT_SECONDS,
-                     "initial connection")
+                    (INITIAL_ACCEPT_TIMEOUT_SECONDS, "initial connection")
                 } else {
-                    (RECONNECT_ACCEPT_TIMEOUT_SECONDS,
-                     "reconnect")
+                    (RECONNECT_ACCEPT_TIMEOUT_SECONDS, "reconnect")
                 };
                 thread::sleep(Duration::from_secs(timeout));
                 if let Err(_) = rx.try_recv() {
-                    error!("timed out waiting for {}. exiting.",
-                           err);
+                    error!("timed out waiting for {}. exiting.", err);
                     std::process::exit(1);
                 }
             });
@@ -385,23 +394,29 @@ impl Server {
             tx.send(()).unwrap();
             info!("accepted connection with {:?}!", client.getpeer());
             match mode {
-                TransferMode::Send => {
-                    match self.send_file(client) {
-                        Ok(_) => {
-                            info!("done sending file");
-                            let _ = client.close();
-                            break;
-                        }
-                        Err(Error { kind: ErrorKind::Severed, msg, finished }) => {
-                            info!("connection severed, msg: {:?}, finished: {}", msg, finished);
-                            let _ = client.close();
-                            continue;
-                        }
-                        Err(Error { kind: ErrorKind::Fatal, msg, finished }) => {
-                            die!("connection fatal, msg: {:?}, finished: {}", msg, finished);
-                        }
+                TransferMode::Send => match self.send_file(client) {
+                    Ok(_) => {
+                        info!("done sending file");
+                        let _ = client.close();
+                        break;
                     }
-                }
+                    Err(Error {
+                        kind: ErrorKind::Severed,
+                        msg,
+                        finished,
+                    }) => {
+                        info!("connection severed, msg: {:?}, finished: {}", msg, finished);
+                        let _ = client.close();
+                        continue;
+                    }
+                    Err(Error {
+                        kind: ErrorKind::Fatal,
+                        msg,
+                        finished,
+                    }) => {
+                        die!("connection fatal, msg: {:?}, finished: {}", msg, finished);
+                    }
+                },
                 TransferMode::Receive => {
                     die!("receive not supported yet");
                 }
@@ -413,8 +428,16 @@ impl Server {
     fn recv_offset<T: Transceiver>(&mut self, client: &mut T) -> Result<u64, Error> {
         let mut buf = vec![0u8; 1024];
         match client.recv(&mut buf) {
-            Ok(i) if i < 8 => return Err(Error::new(ErrorKind::Severed, &format!("msg too short"), 0)),
-            Err(e) => return Err(Error::new(ErrorKind::Severed, &format!("0-length msg received. {:?}", e), 0)),
+            Ok(i) if i < 8 => {
+                return Err(Error::new(ErrorKind::Severed, &format!("msg too short"), 0))
+            }
+            Err(e) => {
+                return Err(Error::new(
+                    ErrorKind::Severed,
+                    &format!("0-length msg received. {:?}", e),
+                    0,
+                ))
+            }
             _ => {}
         };
         let mut rdr = Cursor::new(buf);
@@ -422,20 +445,30 @@ impl Server {
         Ok(offset)
     }
 
-    fn send_remaining<T: Transceiver>(&mut self, client: &mut T, remaining: u64) -> Result<(), Error> {
+    fn send_remaining<T: Transceiver>(
+        &mut self,
+        client: &mut T,
+        remaining: u64,
+    ) -> Result<(), Error> {
         let mut buf = vec![0u8; 1024];
         let mut wtr = vec![];
         wtr.write_u64::<LittleEndian>(remaining).unwrap();
         buf[..wtr.len()].copy_from_slice(&wtr);
-        client.send(&mut buf, wtr.len())
-            .map_err(|e| Error::new(ErrorKind::Severed,
-                                    &format!("failed to write filesize hdr. {:?}", e), remaining))
+        client.send(&mut buf, wtr.len()).map_err(|e| {
+            Error::new(
+                ErrorKind::Severed,
+                &format!("failed to write filesize hdr. {:?}", e),
+                remaining,
+            )
+        })
     }
 
     fn get_file_size(filename: &str) -> u64 {
-        File::open(filename.to_owned()).unwrap()
-             .metadata().unwrap()
-             .len()
+        File::open(filename.to_owned())
+            .unwrap()
+            .metadata()
+            .unwrap()
+            .len()
     }
 
     fn send_file<T: Transceiver>(&mut self, client: &mut T) -> Result<(), Error> {
@@ -459,9 +492,11 @@ impl Server {
                 Ok(ReadMsg::Read(payload)) => {
                     buf[..payload.len()].copy_from_slice(&payload);
                     if let Err(e) = client.send(&mut buf, payload.len()) {
-                        return Err(Error::new(ErrorKind::Severed,
-                                                 &format!("{:?}", e),
-                                                 remaining));
+                        return Err(Error::new(
+                            ErrorKind::Severed,
+                            &format!("{:?}", e),
+                            remaining,
+                        ));
                     }
                 }
                 Err(_) | Ok(ReadMsg::Error) => {
@@ -474,9 +509,11 @@ impl Server {
 
         if let Err(e) = client.recv(&mut buf[..]) {
             warn!("finished sending, but failed getting client confirmation");
-            return Err(Error::new(ErrorKind::Severed,
-                                     &format!("{:?}", e),
-                                     remaining))
+            return Err(Error::new(
+                ErrorKind::Severed,
+                &format!("{:?}", e),
+                remaining,
+            ));
         }
 
         info!("got client finish confirmation.");
@@ -487,11 +524,8 @@ impl Server {
 }
 
 impl Client {
-
-    pub fn new(source: Target, dest: Target, port_range: PortRange)
-            -> Result<Client, String> {
-        if source.is_local() && dest.is_local() ||
-            source.is_remote() && dest.is_remote() {
+    pub fn new(source: Target, dest: Target, port_range: PortRange) -> Result<Client, String> {
+        if source.is_local() && dest.is_local() || source.is_remote() && dest.is_remote() {
             return Err("source and dest can't both be local or remote".into());
         }
 
@@ -501,10 +535,12 @@ impl Client {
             }
         }
 
-        if source.is_remote() && !source.looks_like_file_path() ||
-            dest.is_remote() && !dest.looks_like_file_path() {
+        if source.is_remote() && !source.looks_like_file_path()
+            || dest.is_remote() && !dest.looks_like_file_path()
+        {
             return Err("remote target doesn't look like a normal \
-                       file path (folders not supported)".into());
+                       file path (folders not supported)"
+                .into());
         }
 
         let final_dest = match dest.clone() {
@@ -518,7 +554,7 @@ impl Client {
                 };
                 Target::Local(final_dest_path)
             }
-            Target::Remote(_) => dest
+            Target::Remote(_) => dest,
         };
 
         let state = if let Target::Local(s) = source {
@@ -541,7 +577,7 @@ impl Client {
 
         Ok(Client {
             port_range: port_range,
-            transfer_state: state
+            transfer_state: state,
         })
     }
 
@@ -561,8 +597,10 @@ impl Client {
             die!("ssh error: {}", e.msg);
         });
 
-        debug!("init(version: {}, addr: {})",
-               response.version, response.addr);
+        debug!(
+            "init(version: {}, addr: {})",
+            response.version, response.addr
+        );
 
         let start_ts = Instant::now();
         let pb = Progress::new();
@@ -571,11 +609,7 @@ impl Client {
                 die!("send not supported");
             }
             TransferState::Receive(_, dest_path) => {
-                self.receive(&dest_path,
-                             force_dl,
-                             response.addr,
-                             &response.key,
-                             &pb);
+                self.receive(&dest_path, force_dl, response.addr, &response.key, &pb);
             }
         }
 
@@ -587,13 +621,15 @@ impl Client {
         } else {
             format!("{}h{}m{}s", elapsed / (60 * 60), elapsed / 60, elapsed % 60)
         };
-        pb.finish(format!("shooped it all up in {}\n", fmt_time.green().bold()));
+        pb.finish(format!(
+            "shooped it all up in {}\n",
+            fmt_time.green().bold()
+        ));
     }
 
-    fn confirm_overwrite() -> Result<(),()> {
+    fn confirm_overwrite() -> Result<(), ()> {
         loop {
-            print!("\n{} [y/n] ",
-                   "file exists. overwrite?".yellow().bold());
+            print!("\n{} [y/n] ", "file exists. overwrite?".yellow().bold());
             io::stdout().flush().expect("stdout flush fail");
             let mut input = String::new();
             io::stdin().read_line(&mut input).expect("stdio fail");
@@ -604,19 +640,21 @@ impl Client {
                 "whatever" | "w/e" => {
                     println!("{}", "close enough.".green().bold());
                     break;
-                },
-                _ => println!("answer 'y' or 'n'.")
+                }
+                _ => println!("answer 'y' or 'n'."),
             }
         }
         Ok(())
     }
 
-    fn receive(&mut self,
-               dest_path: &PathBuf,
-               force_dl: bool,
-               addr: SocketAddr,
-               keybytes: &[u8],
-               pb: &Progress) {
+    fn receive(
+        &mut self,
+        dest_path: &PathBuf,
+        force_dl: bool,
+        addr: SocketAddr,
+        keybytes: &[u8],
+        pb: &Progress,
+    ) {
         let mut offset = 0u64;
         let mut filesize = None;
         let path = Path::new(dest_path);
@@ -634,7 +672,12 @@ impl Client {
                     info!("👍  UDT connection established")
                 }
                 Err(e) => {
-                    die!("errrrrrrr connecting to {}:{} - {:?}", addr.ip(), addr.port(), e);
+                    die!(
+                        "errrrrrrr connecting to {}:{} - {:?}",
+                        addr.ip(),
+                        addr.port(),
+                        e
+                    );
                 }
             }
             let mut buf = vec![0u8; connection::MAX_MESSAGE_SIZE];
@@ -667,31 +710,41 @@ impl Client {
                 buf = rdr.into_inner();
                 pb.size(filesize.unwrap());
                 pb.add(offset);
-                pb.message(format!("{}  ",
-                           dest_path.file_name().unwrap().to_string_lossy().blue()));
-                match recv_file(&mut conn,
-                                filesize.unwrap(),
-                                path,
-                                offset,
-                                &pb) {
+                pb.message(format!(
+                    "{}  ",
+                    dest_path.file_name().unwrap().to_string_lossy().blue()
+                ));
+                match recv_file(&mut conn, filesize.unwrap(), path, offset, &pb) {
                     Ok(_) => {
                         debug!("👉  finish packet");
-                        pb.message(format!("{} (done, sending confirmation)  ",
-                                   dest_path.file_name().unwrap().to_string_lossy().green()));
+                        pb.message(format!(
+                            "{} (done, sending confirmation)  ",
+                            dest_path.file_name().unwrap().to_string_lossy().green()
+                        ));
                         buf[0] = 0;
                         if let Err(e) = conn.send(&mut buf, 1) {
                             warn!("failed to send close signal to server: {:?}", e);
                         }
-                        pb.message(format!("{}  ",
-                                   dest_path.file_name().unwrap().to_string_lossy().green()));
+                        pb.message(format!(
+                            "{}  ",
+                            dest_path.file_name().unwrap().to_string_lossy().green()
+                        ));
                         let _ = conn.close();
                         break;
                     }
-                    Err(Error { kind: ErrorKind::Severed, finished, .. }) => {
+                    Err(Error {
+                        kind: ErrorKind::Severed,
+                        finished,
+                        ..
+                    }) => {
                         pb.message(format!("{}", "[[conn severed]] ".yellow().bold()));
                         offset = finished;
                     }
-                    Err(Error { kind: ErrorKind::Fatal, msg, .. }) => {
+                    Err(Error {
+                        kind: ErrorKind::Fatal,
+                        msg,
+                        ..
+                    }) => {
                         die!("{:?}", msg);
                     }
                 }
@@ -701,12 +754,13 @@ impl Client {
     }
 }
 
-fn recv_file<T: Transceiver>(conn: &mut T,
-                             filesize: u64,
-                             filename: &Path,
-                             offset: u64,
-                             pb: &Progress)
-             -> Result<(), Error> {
+fn recv_file<T: Transceiver>(
+    conn: &mut T,
+    filesize: u64,
+    filename: &Path,
+    offset: u64,
+    pb: &Progress,
+) -> Result<(), Error> {
     let f = file::Writer::new(filename.to_path_buf());
     f.seek(SeekFrom::Start(offset));
     debug!("✍️  seeking to pos {} in {}", offset, filename.display());
@@ -714,20 +768,16 @@ fn recv_file<T: Transceiver>(conn: &mut T,
     let buf = &mut [0u8; connection::MAX_MESSAGE_SIZE];
     loop {
         let len = match conn.recv(buf) {
-            Ok(len) if len > 0 => {
-                len
-            }
+            Ok(len) if len > 0 => len,
             Ok(_) => {
                 f.close();
                 warn!("\n\nempty msg, severing\n");
-                return Err(Error::new(ErrorKind::Severed,
-                                         "empty msg", total))
+                return Err(Error::new(ErrorKind::Severed, "empty msg", total));
             }
             Err(e) => {
                 f.close();
                 warn!("\n\nUDT err, severing");
-                return Err(Error::new(ErrorKind::Severed,
-                                         &format!("{:?}", e), total))
+                return Err(Error::new(ErrorKind::Severed, &format!("{:?}", e), total));
             }
         };
 
@@ -744,4 +794,3 @@ fn recv_file<T: Transceiver>(conn: &mut T,
     debug!("👾  file writing thread joined and closed");
     Ok(())
 }
-

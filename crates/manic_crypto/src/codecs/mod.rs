@@ -20,11 +20,12 @@ use std::ops::DerefMut;
 use std::pin::Pin;
 use std::sync::Arc;
 use tokio::io::{AsyncRead, AsyncWrite};
-use tokio_serde::{Deserializer, Serializer};
+pub use transport::{Deserializer, Serializer};
 use zeroize::{Zeroize, ZeroizeOnDrop};
 
 mod bincode_codec;
 mod messagepack;
+mod transport;
 
 pub enum CryptoType {
     ChaCha20Poly1305,
@@ -33,7 +34,7 @@ pub enum CryptoType {
 }
 
 /// Marker trait for unencrypted codecs to wrap in the Messager struct
-pub trait PlainText: Deserializer<Packet> + Serializer<Packet> {}
+pub trait PlainText: Deserializer + Serializer {}
 
 pub(crate) fn new_nonce<A: AeadCore>(rng: &mut OsRng) -> Nonce<A> {
     let mut nonce = Nonce::<A>::default();
@@ -82,7 +83,7 @@ impl<C, A: KeyInit> KeyInit for Crypter<C, A> {
 
 impl<C, A> Crypter<C, A>
 where
-    C: Deserializer<Packet> + Serializer<Packet>,
+    C: Deserializer + Serializer,
     A: Aead + AeadCore + KeyInit,
 {
     pub fn new(codec: C, crypt: A) -> Self {
@@ -90,11 +91,11 @@ where
     }
 }
 
-impl<C, A> Deserializer<Packet> for Crypter<C, A>
+impl<C, A> Deserializer for Crypter<C, A>
 where
-    C: Deserializer<Packet> + Serializer<Packet> + DerefMut,
+    C: Deserializer + Serializer + DerefMut,
     A: Aead + AeadCore,
-    CryptoError: From<<C as Deserializer<Packet>>::Error>,
+    CryptoError: From<<C as Deserializer>::Error>,
 {
     type Error = CryptoError;
 

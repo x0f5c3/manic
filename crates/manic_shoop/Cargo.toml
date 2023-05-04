@@ -1,5 +1,5 @@
 [package]
-name = "shoop"
+name = "manic_shoop"
 version = "0.1.1"
 authors = ["Jake McGinty <me@jake.su>"]
 description = "Shoop is a high-speed encrypted file transfer tool reminiscent of scp. It uses SSH to bootstrap authentication and encryption, then uses UDT (a reliable protocol from the 2000s) instead of TCP (a reliable protocol from the 1970s)."
@@ -19,11 +19,11 @@ include = [
 nightly = []
 
 [lib]
-name = "shoop"
+name = "manic_shoop"
 path = "src/lib.rs"
 
 [[bin]]
-name = "shoop"
+name = "manic_shoop"
 path = "src/main.rs"
 
 [build-dependencies]
@@ -42,6 +42,11 @@ udt = "0.2"
 colored = "2.0.0"
 libc = "0.2"
 pbr = "1.0"
+aead = { workspace = true }
+color-eyre = "0.6.2"
+
+
+tracing = { workspace = true }
 
 [dev-dependencies]
 rand = "0.8.5"

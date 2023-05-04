@@ -1,3 +1,4 @@
+mod error;
 mod listener;
 
 use crate::listener::{Peer, PeerState};
@@ -8,6 +9,8 @@ use std::sync::Arc;
 use std::time::Duration;
 use tokio::sync::mpsc;
 
+/// https://en.wikipedia.org/wiki/User_Datagram_Protocol#Packet_structure
+///
 const MAX_DATAGRAM_SIZE: usize = 65507;
 
 #[derive(Clone, Debug)]

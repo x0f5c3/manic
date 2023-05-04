@@ -95,7 +95,7 @@ impl Connection {
         Self::verify_command_exists("ssh")?;
 
         let cmd = format!(
-            "shoop -s '{}' -p {}",
+            "manic_shoop -s '{}' -p {}",
             self.path.to_string_lossy(),
             self.port_range
         );
@@ -123,7 +123,7 @@ impl Connection {
                 println!("\n");
                 error!("strong SSH crypto appears to be unavailable.");
                 error!(
-                    "this session is sketch, and shoop may simply refuse to work in the future.\n"
+                    "this session is sketch, and manic_shoop may simply refuse to work in the future.\n"
                 );
                 self.exec(&Vec::new())?
             }
@@ -163,7 +163,7 @@ impl Connection {
         }
 
         let (magic, version, ip, port, keyhex) = (info[0], info[1], info[2], info[3], info[4]);
-        if magic != "shoop" {
+        if magic != "manic_shoop" {
             return Err(Error::new(
                 ErrorType::BadServerResponse,
                 "unexpected response start from server",
@@ -192,7 +192,7 @@ impl Connection {
 
         Ok(Response {
             version: version_code,
-            addr: addr,
+            addr,
             key: keybytes,
         })
     }

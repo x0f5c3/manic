@@ -1,14 +1,14 @@
-#[macro_use] extern crate log;
+#[macro_use]
+extern crate log;
+extern crate manic_shoop;
 extern crate structopt;
-extern crate shoop;
 
+use manic_shoop::connection::PortRange;
+use manic_shoop::{Client, LogVerbosity, Server, ShoopLogger, ShoopMode, Target, TransferMode};
 use structopt::StructOpt;
-use shoop::{ShoopLogger, ShoopMode, LogVerbosity, TransferMode,
-            Target, Server, Client};
-use shoop::connection::PortRange;
 
 #[derive(StructOpt, Debug)]
-#[structopt(name = "shoop")]
+#[structopt(name = "manic_shoop")]
 struct Opt {
     #[structopt(short = "d", long = "debug", help = "Extra debugging output")]
     debug: bool,
@@ -22,10 +22,17 @@ struct Opt {
     #[structopt(short = "p", long = "port-range", default_value = "55000-55050")]
     port_range: String,
 
-    #[structopt(name = "SOURCE", help = "The source target, ex. \"my.server.com:~/file.bin\"")]
+    #[structopt(
+        name = "SOURCE",
+        help = "The source target, ex. \"my.server.com:~/file.bin\""
+    )]
     source: String,
 
-    #[structopt(name = "DEST", default_value = ".", help = "The optional destination (either a folder or file)")]
+    #[structopt(
+        name = "DEST",
+        default_value = ".",
+        help = "The optional destination (either a folder or file)"
+    )]
     dest: String,
 }
 
@@ -34,17 +41,17 @@ fn main() {
 
     let mode = match opt.server {
         true => ShoopMode::Server,
-        _    => ShoopMode::Client,
+        _ => ShoopMode::Client,
     };
 
     let verbosity = match opt.debug {
         true => LogVerbosity::Debug,
-        _    => LogVerbosity::Normal,
+        _ => LogVerbosity::Normal,
     };
 
     let port_range = PortRange::from(&opt.port_range).unwrap();
 
-    ShoopLogger::init(mode, verbosity).expect("Error starting shoop logger.");
+    ShoopLogger::init(mode, verbosity).expect("Error starting manic_shoop logger.");
 
     match mode {
         ShoopMode::Server => {
@@ -54,7 +61,7 @@ fn main() {
                 server.start(transfer_mode);
                 info!("exiting.");
             }
-        },
+        }
         ShoopMode::Client => {
             let source = Target::from(opt.source.clone());
             let dest = Target::from(opt.dest.clone());
