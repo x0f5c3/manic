@@ -49,7 +49,7 @@ default-features = false
 optional = true
 
 [dependencies.derive_more]
-version = "0.99.16"
+version = "0.99.17"
 default-features = false
 features = ["display", "from", "error"]
 
