@@ -29,7 +29,7 @@ async = ["tokio", "futures", "rustls"]
 
 [dependencies]
 url = "2.2.2"
-sha2 = "0.10.6"
+sha2 = "0.10.8"
 indicatif = { version = "0.17.2", optional = true }
 tracing = { version = "0.1.28", features = ["log"] }
 futures = { version = "0.3.17", optional = true }
