@@ -32,7 +32,7 @@ url = "2.2.2"
 sha2 = "0.10.6"
 indicatif = { version = "0.17.2", optional = true }
 tracing = { version = "0.1.28", features = ["log"] }
-futures = { version = "0.3.17", optional = true }
+futures = { version = "0.3.30", optional = true }
 rayon = "1.5.1"
 derive_builder = "0.12.0"
 bytes = "1.1.0"
@@ -40,7 +40,7 @@ thiserror = "1.0.30"
 md-5 = "0.10.5"
 
 [dependencies.futures-channel]
-version = "0.3.18"
+version = "0.3.30"
 optional = true
 
 [dependencies.rusty_pool]
