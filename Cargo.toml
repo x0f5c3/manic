@@ -31,7 +31,7 @@ async = ["tokio", "futures", "rustls"]
 url = "2.2.2"
 sha2 = "0.10.6"
 indicatif = { version = "0.17.2", optional = true }
-tracing = { version = "0.1.28", features = ["log"] }
+tracing = { version = "0.1.40", features = ["log"] }
 futures = { version = "0.3.17", optional = true }
 rayon = "1.5.1"
 derive_builder = "0.12.0"
